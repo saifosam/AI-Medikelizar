@@ -5,6 +5,9 @@
 "use strict";
 
 (function () {
+  /* ─── Backend API URL ─── */
+  const API_BASE = "http://localhost:8000";
+
   /* ─── State ─── */
   const state = {
     currentView: "home",
@@ -180,15 +183,20 @@
     answerContent.hidden = true;
     sourcesSection.hidden = true;
 
-    // Simulate RAG retrieval delay
     state.isStreaming = true;
-    const retrievalTime = 800 + Math.random() * 600;
 
-    setTimeout(() => {
-      // Generate answer and show
-      generateAnswer(query);
+    // Try backend API first, fall back to demo
+    fetchAnswerFromBackend(query).then((result) => {
+      if (result) {
+        displayBackendResult(result);
+      } else {
+        // Fallback: use demo data
+        setTimeout(() => {
+          generateDemoAnswer(query);
+        }, 800 + Math.random() * 600);
+      }
       state.isStreaming = false;
-    }, retrievalTime);
+    });
   }
 
   /* ─── Reset results ─── */
@@ -200,18 +208,79 @@
     sourceCards.innerHTML = "";
   }
 
-  /* ─── Generate demo answer ─── */
-  function generateAnswer(query) {
-    // Build a demo answer using the sources
-    const answerText = buildAnswer(query, demoSources);
+  /* ─── Call the FastAPI backend ─── */
+  async function fetchAnswerFromBackend(query) {
+    try {
+      const resp = await fetch(`${API_BASE}/api/query`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query }),
+        signal: AbortSignal.timeout(120000), // 2-minute timeout
+      });
 
-    // Hide loading, show content
+      if (!resp.ok) {
+        console.warn("Backend returned", resp.status, "— falling back to demo");
+        return null;
+      }
+
+      const data = await resp.json();
+      return data;
+    } catch (err) {
+      if (err.name === "TimeoutError") {
+        console.warn("Backend timed out — falling back to demo");
+      } else if (err.name === "TypeError" && err.message.includes("fetch")) {
+        console.warn("Backend not reachable — falling back to demo");
+      } else {
+        console.warn("Backend error:", err.message, "— falling back to demo");
+      }
+      return null;
+    }
+  }
+
+  /* ─── Display a result from the backend API ─── */
+  function displayBackendResult(data) {
     answerLoading.hidden = true;
     answerContent.hidden = false;
 
-    // Stream the answer character by character for a natural feel
+    const answerHtml = data.answer || "<p>No answer returned.</p>";
+    const sources = (data.sources || []).map((s, i) => ({
+      id: s.id || i + 1,
+      title: s.title || "Untitled",
+      authors: s.authors || "",
+      journal: s.journal || "",
+      date: s.date || "",
+      volume: s.volume || "",
+      doi: s.doi || "",
+      pmid: s.pmid || "",
+      url: s.url || "",
+      abstract: s.abstract || "",
+      publisher: s.publisher || "",
+      relevance: s.relevance || 0.5,
+    }));
+
+    streamAnswer(answerHtml, () => {
+      if (sources.length > 0) {
+        renderSourceCards(sources);
+        updateMeta(sources);
+      } else {
+        sourcesSection.hidden = true;
+      }
+    });
+
+    // Log provider info
+    if (data.provider) {
+      console.log(`Answered by: ${data.provider} · ${data.model}`);
+    }
+  }
+
+  /* ─── Generate demo answer (fallback) ─── */
+  function generateDemoAnswer(query) {
+    const answerText = buildAnswer(query, demoSources);
+
+    answerLoading.hidden = true;
+    answerContent.hidden = false;
+
     streamAnswer(answerText, () => {
-      // After streaming completes, show source cards
       renderSourceCards(demoSources);
       updateMeta(demoSources);
     });
