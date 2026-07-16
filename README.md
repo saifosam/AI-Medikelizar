@@ -77,21 +77,48 @@ python -m http.server 8000
 
 Once the FastAPI backend is integrated, you will need:
 
+### AI provider configuration
+
+Edit **`js/config.js`** to choose your AI provider and set API keys. The config supports five providers:
+
+| Provider | Type | API Key Required |
+|----------|------|------------------|
+| **OpenAI** | Cloud API | Yes — `sk-...` |
+| **Ollama** | Local | No (runs on your machine) |
+| **Anthropic** | Cloud API | Yes — `sk-ant-...` |
+| **Google Gemini** | Cloud API | Yes |
+| **Custom** | OpenAI-compatible endpoint | Optional (e.g., vLLM, TGI, local proxies) |
+
 ```bash
-# Environment variables (create .env at project root)
-# Required (choose one AI provider):
+# Example: switch to Ollama in js/config.js:
+#   provider: "ollama"
+#   ollama: { baseUrl: "http://localhost:11434", model: "llama3.2" }
+#
+# Example: switch to OpenAI:
+#   provider: "openai"
+#   openai: { apiKey: "sk-...", model: "gpt-4o-mini" }
+```
+
+> **⚠️ Security note:** API keys placed in `js/config.js` are visible in the browser via DevTools. This is acceptable for local/dev use, but **never deploy this file with real keys to a public site**. In production, route all API calls through your backend server instead.
+
+You can also use **`.env`** (see `.env.example`) for environment variables if running the future backend.
+
+```bash
+# Environment variables (copy .env.example → .env)
+# Required:
 PUBMED_API_KEY=your_ncbi_api_key
 
-# Option A — OpenAI (cloud):
-OPENAI_API_KEY=your_openai_api_key
-OPENAI_MODEL=gpt-4o-mini   # or gpt-4o, gpt-4-turbo, etc.
-
-# Option B — Ollama (local, no API key needed):
-OLLAMA_BASE_URL=http://localhost:11434   # default Ollama endpoint
-OLLAMA_MODEL=llama3.2-vision            # or llama3.1, mistral, meditron, etc.
+# Choose one AI provider group:
+OPENAI_API_KEY=sk-...           # OpenAI
+# or
+OLLAMA_BASE_URL=http://localhost:11434  # Ollama (local)
+# or
+ANTHROPIC_API_KEY=sk-ant-...    # Anthropic
+# or
+GOOGLE_API_KEY=...              # Google Gemini
 
 # Optional:
-CUSTOM_SEARCH_ENGINE_ID=your_cse_id   # for scoped web search
+CUSTOM_SEARCH_ENGINE_ID=your_cse_id
 CDC_API_KEY=your_cdc_api_key
 WHO_API_KEY=your_who_api_key
 ```
@@ -106,13 +133,15 @@ AI-Medikelizar/
 ├── css/
 │   └── main.css                # Full design system & responsive styles
 ├── js/
+│   ├── config.js               # AI provider & API key configuration (edit this)
 │   └── main.js                 # Application logic, router, demo data
 ├── .github/
 │   └── workflows/
 │       └── pages.yml           # GitHub Actions deployment workflow
+├── .env.example                # Environment variable template
+├── .gitignore                  # Git ignore rules
 ├── LICENSE                     # MIT license
-├── README.md                   # This file
-└── .gitignore                  # Git ignore rules
+└── README.md                   # This file
 ```
 
 ### Page views (hash-routed)

@@ -443,6 +443,13 @@
     const footerYear = document.getElementById("footer-year");
     if (footerYear) footerYear.textContent = new Date().getFullYear();
 
+    // ── Log active AI provider from config ──
+    if (typeof AI_CONFIG !== "undefined") {
+      console.log(
+        `Active provider: ${AI_CONFIG.provider} · Model: ${getModelName() || "N/A"}`
+      );
+    }
+
     // ── Theme initialisation ──
     const currentTheme = resolveTheme();
 
