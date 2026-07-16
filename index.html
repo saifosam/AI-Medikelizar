@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="AI-Medikelizar — A clinical reference tool for evidence-based medical information grounded in trusted sources.">
+  <title>AI-Medikelizar — Clinical Reference Tool</title>
+
+  <!-- Preconnect to Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=Inter:wght@400;450;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='28' font-size='24'%3E⚕%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+
+  <!-- ════════════════ Skip to main content ════════════════ -->
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <!-- ════════════════ DISCLAIMER BANNER ════════════════ -->
+  <aside class="disclaimer-banner" role="note" aria-label="Medical disclaimer">
+    <span class="disclaimer-icon" aria-hidden="true">⚠</span>
+    <p><strong>Not a substitute for professional medical advice.</strong> AI-Medikelizar synthesises information from trusted sources for educational reference only. Always consult a qualified healthcare provider for personal medical decisions.</p>
+  </aside>
+
+  <!-- ════════════════ HEADER ════════════════ -->
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="#home" class="logo-link" data-nav>
+        <span class="logo-mark" aria-hidden="true">⚕</span>
+        <span class="logo-text">
+          <span class="logo-name">AI-Medikelizar</span>
+          <span class="logo-tagline">Clinical Reference Tool</span>
+        </span>
+      </a>
+
+      <nav class="primary-nav" aria-label="Main navigation">
+        <button class="nav-toggle" aria-label="Toggle navigation menu" aria-expanded="false">
+          <span class="nav-toggle-bar"></span>
+          <span class="nav-toggle-bar"></span>
+          <span class="nav-toggle-bar"></span>
+        </button>
+        <ul class="nav-list">
+          <li><a href="#home" class="nav-link active" data-nav>Query</a></li>
+          <li><a href="#trusted-sources" class="nav-link" data-nav>Sources</a></li>
+          <li><a href="#about" class="nav-link" data-nav>About</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ════════════════ MAIN CONTENT ════════════════ -->
+  <main id="main-content">
+
+    <!-- ──── HOME / QUERY VIEW ──── -->
+    <section id="home" class="view active" aria-label="Query page">
+      <div class="view-inner query-view">
+        <div class="query-hero">
+          <h1 class="query-heading">Ask a clinical question</h1>
+          <p class="query-subheading">Get answers grounded in peer-reviewed research and trusted health authorities.</p>
+
+          <form id="query-form" class="query-form" role="search" aria-label="Health information search">
+            <div class="search-bar">
+              <label for="query-input" class="sr-only">Enter your health-related question</label>
+              <input
+                type="search"
+                id="query-input"
+                class="query-input"
+                placeholder="e.g. What are the standard treatments for adult-onset asthma?"
+                autocomplete="off"
+                spellcheck="true"
+                aria-describedby="query-hint"
+              >
+              <button type="submit" class="query-submit" aria-label="Submit question">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                  <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+              </button>
+            </div>
+            <p id="query-hint" class="query-hint">Press <kbd>Enter</kbd> to search. Example queries below.</p>
+          </form>
+        </div>
+
+        <div class="examples-section">
+          <h2 class="section-label">Example queries</h2>
+          <ul class="example-list">
+            <li>
+              <button type="button" class="example-btn" data-query="What is the recommended first-line pharmacotherapy for hypertension in adults according to JNC 8 guidelines?">
+                <span class="example-icon" aria-hidden="true">🫀</span>
+                <span class="example-text">
+                  <span class="example-title">Hypertension guidelines</span>
+                  <span class="example-desc">First-line pharmacotherapy per JNC 8</span>
+                </span>
+              </button>
+            </li>
+            <li>
+              <button type="button" class="example-btn" data-query="What is the efficacy of mRNA COVID-19 vaccines against severe disease in immunocompromised patients?">
+                <span class="example-icon" aria-hidden="true">🦠</span>
+                <span class="example-text">
+                  <span class="example-title">COVID-19 vaccine efficacy</span>
+                  <span class="example-desc">mRNA vaccines in immunocompromised patients</span>
+                </span>
+              </button>
+            </li>
+            <li>
+              <button type="button" class="example-btn" data-query="What are the evidence-based screening recommendations for colorectal cancer from the USPSTF?">
+                <span class="example-icon" aria-hidden="true">🔬</span>
+                <span class="example-text">
+                  <span class="example-title">Colorectal cancer screening</span>
+                  <span class="example-desc">USPSTF recommendations</span>
+                </span>
+              </button>
+            </li>
+            <li>
+              <button type="button" class="example-btn" data-query="What is the association between HbA1c levels and microvascular complications in type 2 diabetes?">
+                <span class="example-icon" aria-hidden="true">🩸</span>
+                <span class="example-text">
+                  <span class="example-title">Diabetes &amp; HbA1c targets</span>
+                  <span class="example-desc">Microvascular complication risk</span>
+                </span>
+              </button>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ──── RESULTS VIEW ──── -->
+    <section id="results" class="view" aria-label="Search results">
+      <div class="view-inner results-view">
+
+        <!-- Back link -->
+        <a href="#home" class="results-back" data-nav>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+          New query
+        </a>
+
+        <!-- Query echo -->
+        <div class="query-echo">
+          <span class="query-echo-label">Query</span>
+          <p class="query-echo-text" id="query-echo-text"></p>
+        </div>
+
+        <!-- Answer area -->
+        <div class="answer-area" id="answer-area">
+          <div class="answer-loading" id="answer-loading" aria-live="polite">
+            <div class="answer-loading-dot-pulse">
+              <span class="sr-only">Retrieving evidence and generating answer</span>
+            </div>
+            <p class="answer-loading-text">Retrieving evidence from trusted sources…</p>
+          </div>
+
+          <div class="answer-content" id="answer-content" hidden>
+            <div class="answer-header">
+              <h2 class="answer-title">Synthesis</h2>
+              <span class="answer-confidence" id="answer-confidence">
+                <span class="confidence-dot" aria-hidden="true"></span>
+                <span class="confidence-label">Confidence</span>
+                <span class="confidence-value" id="confidence-value">High</span>
+              </span>
+            </div>
+
+            <div class="answer-body" id="answer-body">
+              <!-- Answer text with citation markers injected by JS -->
+            </div>
+
+            <div class="answer-meta">
+              <span class="answer-date">Generated <time id="answer-timestamp" datetime=""></time></span>
+              <span class="answer-sources-count" id="answer-sources-count"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Source cards -->
+        <div class="sources-section" id="sources-section" hidden>
+          <h2 class="section-label sources-section-label">
+            Sources
+            <span class="sources-count-badge" id="sources-count-badge">0</span>
+          </h2>
+          <div class="source-cards" id="source-cards">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ──── TRUSTED SOURCES VIEW ──── -->
+    <section id="trusted-sources" class="view" aria-label="Trusted sources page">
+      <div class="view-inner sources-page">
+        <h1 class="page-heading">Trusted sources</h1>
+        <p class="page-subheading">Every answer from AI-Medikelizar is grounded in evidence from these authoritative databases and health organisations. We index only publicly available, peer-reviewed, or government-vetted content.</p>
+
+        <div class="source-grid">
+          <article class="source-card-detail">
+            <div class="source-card-header">
+              <span class="source-card-icon" aria-hidden="true">📚</span>
+              <div>
+                <h2 class="source-card-name">PubMed / MEDLINE</h2>
+                <p class="source-card-publisher">U.S. National Library of Medicine &amp; National Institutes of Health</p>
+              </div>
+            </div>
+            <p class="source-card-description">Over 35 million citations for biomedical literature from MEDLINE, life science journals, and online books. Citations may include links to full-text content from PubMed Central and publisher web sites.</p>
+            <dl class="source-card-meta">
+              <dt>Coverage</dt>
+              <dd>1946 – present</dd>
+              <dt>Update frequency</dt>
+              <dd>Daily</dd>
+              <dt>Content types</dt>
+              <dd>Peer-reviewed journal articles, systematic reviews, clinical trials</dd>
+            </dl>
+            <a href="https://pubmed.ncbi.nlm.nih.gov/" target="_blank" rel="noopener noreferrer" class="source-card-link">Visit PubMed <span aria-hidden="true">↗</span></a>
+          </article>
+
+          <article class="source-card-detail">
+            <div class="source-card-header">
+              <span class="source-card-icon" aria-hidden="true">🏛</span>
+              <div>
+                <h2 class="source-card-name">Centers for Disease Control and Prevention (CDC)</h2>
+                <p class="source-card-publisher">U.S. Department of Health &amp; Human Services</p>
+              </div>
+            </div>
+            <p class="source-card-description">Authoritative public health information, disease-specific guidelines, vaccination recommendations, epidemiological data, and health statistics for the United States and global health threats.</p>
+            <dl class="source-card-meta">
+              <dt>Coverage</dt>
+              <dd>Ongoing, with historical data</dd>
+              <dt>Update frequency</dt>
+              <dd>Continuous</dd>
+              <dt>Content types</dt>
+              <dd>Guidelines, MMWR reports, data sets, clinical resources</dd>
+            </dl>
+            <a href="https://www.cdc.gov/" target="_blank" rel="noopener noreferrer" class="source-card-link">Visit CDC <span aria-hidden="true">↗</span></a>
+          </article>
+
+          <article class="source-card-detail">
+            <div class="source-card-header">
+              <span class="source-card-icon" aria-hidden="true">🌍</span>
+              <div>
+                <h2 class="source-card-name">World Health Organization (WHO)</h2>
+                <p class="source-card-publisher">United Nations</p>
+              </div>
+            </div>
+            <p class="source-card-description">Global health guidelines, disease classification (ICD), international health regulations, epidemiological updates, and evidence-based recommendations for health policy and clinical practice worldwide.</p>
+            <dl class="source-card-meta">
+              <dt>Coverage</dt>
+              <dd>Ongoing, with archival content</dd>
+              <dt>Update frequency</dt>
+              <dd>Continuous</dd>
+              <dt>Content types</dt>
+              <dd>Guidelines, technical reports, situation reports, classification tools</dd>
+            </dl>
+            <a href="https://www.who.int/" target="_blank" rel="noopener noreferrer" class="source-card-link">Visit WHO <span aria-hidden="true">↗</span></a>
+          </article>
+
+          <article class="source-card-detail">
+            <div class="source-card-header">
+              <span class="source-card-icon" aria-hidden="true">📋</span>
+              <div>
+                <h2 class="source-card-name">MedlinePlus</h2>
+                <p class="source-card-publisher">U.S. National Library of Medicine &amp; National Institutes of Health</p>
+              </div>
+            </div>
+            <p class="source-card-description">Consumer-friendly health information covering more than 1,000 health topics in multiple languages. Trusted, up-to-date health information reviewed by medical librarians and physicians.</p>
+            <dl class="source-card-meta">
+              <dt>Coverage</dt>
+              <dd>Ongoing, regularly reviewed</dd>
+              <dt>Update frequency</dt>
+              <dd>Periodic review cycle</dd>
+              <dt>Content types</dt>
+              <dd>Health topic summaries, drug information, medical encyclopedia, patient handouts</dd>
+            </dl>
+            <a href="https://medlineplus.gov/" target="_blank" rel="noopener noreferrer" class="source-card-link">Visit MedlinePlus <span aria-hidden="true">↗</span></a>
+          </article>
+
+          <article class="source-card-detail">
+            <div class="source-card-header">
+              <span class="source-card-icon" aria-hidden="true">📐</span>
+              <div>
+                <h2 class="source-card-name">National Institutes of Health (NIH)</h2>
+                <p class="source-card-publisher">U.S. Department of Health &amp; Human Services</p>
+              </div>
+            </div>
+            <p class="source-card-description">The nation's medical research agency encompassing 27 institutes and centres. Source for clinical trial registries, research funding priorities, disease-specific research summaries, and health disparities data.</p>
+            <dl class="source-card-meta">
+              <dt>Coverage</dt>
+              <dd>Ongoing, historical research archives</dd>
+              <dt>Update frequency</dt>
+              <dd>Continuous</dd>
+              <dt>Content types</dt>
+              <dd>Research summaries, clinical trial info, health topic portals, strategic plans</dd>
+            </dl>
+            <a href="https://www.nih.gov/" target="_blank" rel="noopener noreferrer" class="source-card-link">Visit NIH <span aria-hidden="true">↗</span></a>
+          </article>
+
+          <article class="source-card-detail">
+            <div class="source-card-header">
+              <span class="source-card-icon" aria-hidden="true">📖</span>
+              <div>
+                <h2 class="source-card-name">PubMed Central (PMC)</h2>
+                <p class="source-card-publisher">U.S. National Library of Medicine &amp; National Institutes of Health</p>
+              </div>
+            </div>
+            <p class="source-card-description">Free full-text archive of biomedical and life sciences journal literature. All articles are freely accessible and many include supplementary materials, data sets, and multimedia.</p>
+            <dl class="source-card-meta">
+              <dt>Coverage</dt>
+              <dd>Varies by journal</dd>
+              <dt>Update frequency</dt>
+              <dd>Daily</dd>
+              <dt>Content types</dt>
+              <dd>Full-text articles, review papers, clinical trial reports</dd>
+            </dl>
+            <a href="https://www.ncbi.nlm.nih.gov/pmc/" target="_blank" rel="noopener noreferrer" class="source-card-link">Visit PMC <span aria-hidden="true">↗</span></a>
+          </article>
+        </div>
+
+        <div class="source-note">
+          <h2>How we use these sources</h2>
+          <p>When you submit a query, AI-Medikelizar searches across the above databases using semantic retrieval to identify the most relevant and authoritative content. Our AI then synthesises a response grounded exclusively in the retrieved evidence — never from its internal training data alone.</p>
+          <p>Every claim in an answer is linked to at least one source citation. You can expand any citation to view the full reference details and access the original publication. We are transparent about the evidence behind every answer.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ──── ABOUT VIEW ──── -->
+    <section id="about" class="view" aria-label="About page">
+      <div class="view-inner about-page">
+        <h1 class="page-heading">About AI-Medikelizar</h1>
+
+        <div class="about-content">
+          <section class="about-section">
+            <h2>Our mission</h2>
+            <p>AI-Medikelizar exists to make evidence-based medical knowledge more accessible to clinicians, researchers, and informed patients. We believe that access to reliable, cited health information is a cornerstone of informed decision-making.</p>
+            <p>The tool is designed as a clinical reference — not a diagnostic aid, not a treatment planner, and never a substitute for professional judgement. Every answer points back to the source it came from, so you can verify, read in context, and draw your own conclusions.</p>
+          </section>
+
+          <section class="about-section">
+            <h2>The trust model</h2>
+            <div class="trust-model-grid">
+              <div class="trust-model-card">
+                <h3>Source-restricted retrieval</h3>
+                <p>Our retrieval system searches only the pre-indexed trusted databases listed on our <a href="#trusted-sources" data-nav>Sources page</a>. We do not draw from unfiltered web content, forums, or unverified repositories.</p>
+              </div>
+              <div class="trust-model-card">
+                <h3>Citation-anchored generation</h3>
+                <p>The AI model is instructed to compose answers using only the retrieved source text. Every factual statement is tied to a citation marker <sup>[1]</sup>, <sup>[2]</sup> referencing a specific source card.</p>
+              </div>
+              <div class="trust-model-card">
+                <h3>Human-reviewable evidence</h3>
+                <p>Every source card includes the publication title, authors, journal or publisher, date, and a direct link to the original. You can always read the source for yourself.</p>
+              </div>
+              <div class="trust-model-card">
+                <h3>Transparent limitations</h3>
+                <p>We clearly communicate confidence levels, date ranges of indexed content, and gaps in coverage. No answer is presented as definitive — medicine is an evolving field.</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="about-section">
+            <h2>Technical approach</h2>
+            <p>AI-Medikelizar uses a retrieval-augmented generation (RAG) pipeline. When you ask a question, embeddings of your query are used to semantically search a curated corpus of medical literature. The most relevant passages are retrieved and passed to a large language model, which is instructed to:</p>
+            <ul>
+              <li>Answer only from the provided source text</li>
+              <li>Mark every claim with an inline citation to its source passage</li>
+              <li>Explicitly state when the retrieved evidence is insufficient to answer</li>
+              <li>Never fabricate references or infer beyond what the sources say</li>
+            </ul>
+          </section>
+
+          <section class="about-section">
+            <h2>Intended use</h2>
+            <p>This tool is designed for:</p>
+            <ul>
+              <li><strong>Healthcare professionals</strong> seeking a quick synthesis of current evidence on a specific clinical question</li>
+              <li><strong>Researchers</strong> exploring a new topic area and looking for key papers</li>
+              <li><strong>Patients and caregivers</strong> who want to better understand a condition or treatment from authoritative sources — in consultation with their healthcare team</li>
+            </ul>
+            <p>It is <strong>not</strong> designed for emergency medical questions, diagnostic decision-making, or as a replacement for clinical judgement.</p>
+          </section>
+
+          <section class="about-section disclaimer-section">
+            <h2>Disclaimer</h2>
+            <div class="disclaimer-box" role="note">
+              <p><strong>AI-Medikelizar is for informational and educational purposes only.</strong> The content generated by this tool does not constitute medical advice, diagnosis, or treatment. Always seek the advice of your physician or other qualified health provider with any questions you may have regarding a medical condition or treatment. Never disregard professional medical advice or delay in seeking it because of something you have read on this site.</p>
+              <p>If you think you may have a medical emergency, call your doctor or 911 immediately. AI-Medikelizar does not recommend or endorse any specific tests, physicians, products, procedures, opinions, or other information that may be referenced in generated responses.</p>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ════════════════ FOOTER ════════════════ -->
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-col">
+        <span class="footer-logo">⚕ AI-Medikelizar</span>
+        <p class="footer-tagline">Evidence-based clinical reference tool.</p>
+      </div>
+      <div class="footer-col">
+        <h3 class="footer-heading">Navigate</h3>
+        <ul class="footer-links">
+          <li><a href="#home" data-nav>Query</a></li>
+          <li><a href="#trusted-sources" data-nav>Trusted sources</a></li>
+          <li><a href="#about" data-nav>About</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h3 class="footer-heading">Resources</h3>
+        <ul class="footer-links">
+          <li><a href="https://pubmed.ncbi.nlm.nih.gov/" target="_blank" rel="noopener noreferrer">PubMed</a></li>
+          <li><a href="https://www.cdc.gov/" target="_blank" rel="noopener noreferrer">CDC</a></li>
+          <li><a href="https://www.who.int/" target="_blank" rel="noopener noreferrer">WHO</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <p class="footer-disclaimer">This tool does not provide medical advice. See the <a href="#about" data-nav>About page</a> for full disclaimer.</p>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; <time id="footer-year">2026</time> AI-Medikelizar. Not a substitute for professional medical advice.</p>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
