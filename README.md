@@ -1,6 +1,6 @@
 # ⚕ AI-Medikelizar — Clinical Reference Tool
 
-**AI-Medikelizar** is a clinical reference tool that lets users ask health-related questions and receive answers grounded strictly in trusted medical sources — PubMed/MEDLINE, CDC, WHO, MedlinePlus, NIH, and PubMed Central. Every claim includes a traceable citation; no answer appears without a source.
+**AI-Medikelizar** is a clinical reference tool that lets users ask health-related questions and receive answers grounded strictly in trusted medical sources — PubMed/MEDLINE, CDC, WHO, MedlinePlus, NIH, PubMed Central, and MSD Manuals. Every claim includes a traceable citation; no answer appears without a source.
 
 ---
 
@@ -15,7 +15,7 @@ AI-Medikelizar solves this by **restricting retrieval to a curated allowlist of 
 ## How it works
 
 1. **You ask a clinical question** via a search-bar style input (not a chat interface).
-2. **Retrieval engine searches only the trusted allowlist** — PubMed, CDC, WHO, MedlinePlus, NIH, and PubMed Central — using scoped search APIs. No open-web results.
+2. **Retrieval engine searches only the trusted allowlist** — PubMed, CDC, WHO, MedlinePlus, NIH, PubMed Central, and MSD Manuals — using scoped search APIs. No open-web results.
 3. **AI summarises the retrieved evidence** into a clear answer with inline citation markers (<sup>[1]</sup>, <sup>[2]</sup>) pointing to specific source cards.
 4. **Source cards display full citation metadata** — title, authors, journal, date, PMID, DOI, and a direct link to the original publication — so you can always read the evidence for yourself.
 
@@ -31,6 +31,7 @@ AI-Medikelizar solves this by **restricting retrieval to a curated allowlist of 
 | **World Health Organization (WHO)** | United Nations | Global health guidelines, ICD classification, international health regulations, health policy |
 | **MedlinePlus** | U.S. National Library of Medicine (NIH) | Consumer-friendly health information, 1,000+ health topics, drug information, patient handouts |
 | **National Institutes of Health (NIH)** | U.S. Department of Health & Human Services | Research summaries, clinical trial registry, disease-specific portals, health disparities data |
+| **MSD Manuals** | Merck Sharp & Dohme (MSD) / Merck & Co. | Comprehensive medical reference covering diseases, symptoms, treatments, drug information, and diagnostic guidelines — Professional and Consumer editions |
 
 ---
 
@@ -42,6 +43,7 @@ AI-Medikelizar solves this by **restricting retrieval to a curated allowlist of 
 | **Design system** | Custom CSS with CSS Grid, Flexbox, custom properties, responsive breakpoints |
 | **Typography** | Source Serif 4 (headings), Inter (body), JetBrains Mono (citations / data) |
 | **Backend** | Python / FastAPI (in development — RAG pipeline with embeddings + LLM) |
+| **AI provider** | OpenAI API (default) or local models via Ollama (configurable) |
 | **Retrieval** | Scoped Custom Search Engine or per-source APIs (configurable) |
 | **Dark mode** | CSS custom properties with `prefers-color-scheme` detection, manual toggle, and localStorage persistence |
 | **Deployment** | GitHub Pages via GitHub Actions |
@@ -77,12 +79,19 @@ Once the FastAPI backend is integrated, you will need:
 
 ```bash
 # Environment variables (create .env at project root)
-# Required:
+# Required (choose one AI provider):
 PUBMED_API_KEY=your_ncbi_api_key
-OPENAI_API_KEY=your_openai_api_key    # or other LLM provider
-CUSTOM_SEARCH_ENGINE_ID=your_cse_id   # optional, for scoped web search
+
+# Option A — OpenAI (cloud):
+OPENAI_API_KEY=your_openai_api_key
+OPENAI_MODEL=gpt-4o-mini   # or gpt-4o, gpt-4-turbo, etc.
+
+# Option B — Ollama (local, no API key needed):
+OLLAMA_BASE_URL=http://localhost:11434   # default Ollama endpoint
+OLLAMA_MODEL=llama3.2-vision            # or llama3.1, mistral, meditron, etc.
 
 # Optional:
+CUSTOM_SEARCH_ENGINE_ID=your_cse_id   # for scoped web search
 CDC_API_KEY=your_cdc_api_key
 WHO_API_KEY=your_who_api_key
 ```
@@ -112,7 +121,7 @@ AI-Medikelizar/
 |-------|------|-------------|
 | `#home` | **Query** | Search-bar input with example clinical questions |
 | `#results` | **Results** | AI-synthesised answer with inline citations + expandable source cards |
-| `#trusted-sources` | **Sources** | Allowlist of 6 indexed medical databases/organisations |
+| `#trusted-sources` | **Sources** | Allowlist of 7 indexed medical databases/organisations |
 | `#about` | **About** | Trust model explanation, technical approach, intended use, full disclaimer |
 
 ---
