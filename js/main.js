@@ -386,11 +386,80 @@
     }
   });
 
+  /* ─── Dark mode ─── */
+
+  /** Detect system color scheme preference */
+  function getSystemTheme() {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+
+  /** Get the stored theme, falling back to system preference */
+  function getStoredTheme() {
+    const stored = localStorage.getItem("ai-medikelizar-theme");
+    if (stored === "dark" || stored === "light") return stored;
+    return null;
+  }
+
+  /** Apply theme to the document */
+  function applyTheme(theme) {
+    if (theme === "dark") {
+      document.documentElement.setAttribute("data-theme", "dark");
+    } else {
+      document.documentElement.removeAttribute("data-theme");
+    }
+  }
+
+  /** Resolve and apply the correct theme */
+  function resolveTheme() {
+    const stored = getStoredTheme();
+    const theme = stored || getSystemTheme();
+    applyTheme(theme);
+    return theme;
+  }
+
+  /** Update toggle button aria-label and title based on current theme */
+  function updateToggleAria(themeToggle, currentTheme) {
+    const nextTheme = currentTheme === "dark" ? "light" : "dark";
+    const nextLabel = nextTheme === "dark" ? "dark" : "light";
+    themeToggle.setAttribute("aria-label", `Switch to ${nextLabel} mode`);
+    themeToggle.setAttribute("title", `Switch to ${nextLabel} mode`);
+  }
+
+  /** Toggle between light and dark */
+  function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+    const newTheme = currentTheme === "dark" ? "light" : "dark";
+
+    applyTheme(newTheme);
+    localStorage.setItem("ai-medikelizar-theme", newTheme);
+
+    const themeToggle = document.getElementById("theme-toggle");
+    if (themeToggle) updateToggleAria(themeToggle, newTheme);
+  }
+
   /* ─── Init ─── */
   function init() {
     // Set footer year
     const footerYear = document.getElementById("footer-year");
     if (footerYear) footerYear.textContent = new Date().getFullYear();
+
+    // ── Theme initialisation ──
+    const currentTheme = resolveTheme();
+
+    // Wire up theme toggle button
+    const themeToggle = document.getElementById("theme-toggle");
+    if (themeToggle) {
+      updateToggleAria(themeToggle, currentTheme);
+      themeToggle.addEventListener("click", toggleTheme);
+    }
+
+    // Listen for system colour scheme changes (only if no stored preference)
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+      if (!getStoredTheme()) {
+        const newTheme = resolveTheme();
+        if (themeToggle) updateToggleAria(themeToggle, newTheme);
+      }
+    });
 
     // Initial route based on URL hash or default to home
     const hash = window.location.hash || "#home";

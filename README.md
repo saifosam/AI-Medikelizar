@@ -43,6 +43,7 @@ AI-Medikelizar solves this by **restricting retrieval to a curated allowlist of 
 | **Typography** | Source Serif 4 (headings), Inter (body), JetBrains Mono (citations / data) |
 | **Backend** | Python / FastAPI (in development — RAG pipeline with embeddings + LLM) |
 | **Retrieval** | Scoped Custom Search Engine or per-source APIs (configurable) |
+| **Dark mode** | CSS custom properties with `prefers-color-scheme` detection, manual toggle, and localStorage persistence |
 | **Deployment** | GitHub Pages via GitHub Actions |
 
 ---

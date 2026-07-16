@@ -6,6 +6,16 @@
   <meta name="description" content="AI-Medikelizar — A clinical reference tool for evidence-based medical information grounded in trusted sources.">
   <title>AI-Medikelizar — Clinical Reference Tool</title>
 
+  <!-- Inline script to prevent flash of wrong theme -->
+  <script>
+    (function() {
+      var t = localStorage.getItem("ai-medikelizar-theme");
+      if (t === "dark" || (!t && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+        document.documentElement.setAttribute("data-theme", "dark");
+      }
+    })();
+  </script>
+
   <!-- Preconnect to Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -36,18 +46,38 @@
         </span>
       </a>
 
-      <nav class="primary-nav" aria-label="Main navigation">
-        <button class="nav-toggle" aria-label="Toggle navigation menu" aria-expanded="false">
-          <span class="nav-toggle-bar"></span>
-          <span class="nav-toggle-bar"></span>
-          <span class="nav-toggle-bar"></span>
+      <div class="header-controls">
+        <button class="theme-toggle" id="theme-toggle" aria-label="Switch to dark mode" title="Switch to dark mode">
+          <!-- Moon icon (light mode → click to go dark) -->
+          <svg class="moon-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+          <!-- Sun icon (dark mode → click to go light) -->
+          <svg class="sun-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
         </button>
-        <ul class="nav-list">
-          <li><a href="#home" class="nav-link active" data-nav>Query</a></li>
-          <li><a href="#trusted-sources" class="nav-link" data-nav>Sources</a></li>
-          <li><a href="#about" class="nav-link" data-nav>About</a></li>
-        </ul>
-      </nav>
+        <nav class="primary-nav" aria-label="Main navigation">
+          <button class="nav-toggle" aria-label="Toggle navigation menu" aria-expanded="false">
+            <span class="nav-toggle-bar"></span>
+            <span class="nav-toggle-bar"></span>
+            <span class="nav-toggle-bar"></span>
+          </button>
+          <ul class="nav-list">
+            <li><a href="#home" class="nav-link active" data-nav>Query</a></li>
+            <li><a href="#trusted-sources" class="nav-link" data-nav>Sources</a></li>
+            <li><a href="#about" class="nav-link" data-nav>About</a></li>
+          </ul>
+        </nav>
+      </div>
     </div>
   </header>
 
