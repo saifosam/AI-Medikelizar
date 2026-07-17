@@ -35,10 +35,11 @@ def _parse_js_config(path: Path) -> dict:
         m = re.search(pattern, text, re.MULTILINE)
         return m.group(1).strip() if m else default
 
-    # Determine active provider
+    # Determine active provider (env takes priority)
     provider = (
-        _find(r'provider\s*:\s*"([^"]+)"')
-        or os.getenv("AI_PROVIDER", "openai")
+        os.getenv("AI_PROVIDER")
+        or _find(r'provider\s*:\s*"([^"]+)"')
+        or "openai"
     )
 
     cfg = {"provider": provider}
@@ -96,7 +97,7 @@ def _parse_js_config(path: Path) -> dict:
 # ── Read config ────────────────────────────────────────
 _js_cfg = _parse_js_config(JS_CONFIG_PATH)
 
-PROVIDER = _js_cfg.get("provider", os.getenv("AI_PROVIDER", "openai"))
+PROVIDER = os.getenv("AI_PROVIDER") or _js_cfg.get("provider", "openai")
 
 # Retrieve provider-specific settings with env var override
 def _get(key: str, provider_key: str, env_var: str, default=None):
