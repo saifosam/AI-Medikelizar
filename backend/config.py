@@ -20,8 +20,11 @@ PROJECT_DIR = BACKEND_DIR.parent
 JS_CONFIG_PATH = PROJECT_DIR / "js" / "config.js"
 ENV_PATH = BACKEND_DIR / ".env"
 
-# ── Load .env if present ───────────────────────────────
-load_dotenv(ENV_PATH)
+# ── Load .env (project root takes priority over backend/) ─
+load_dotenv(ENV_PATH, override=True)
+PROJECT_ENV_PATH = PROJECT_DIR / ".env"
+if PROJECT_ENV_PATH.exists():
+    load_dotenv(PROJECT_ENV_PATH, override=True)
 
 # ── Simple JS-object parser for config.js ──────────────
 def _parse_js_config(path: Path) -> dict:

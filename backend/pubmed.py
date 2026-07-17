@@ -132,21 +132,44 @@ def _build_search_term(query: str) -> str:
 
 def _parse_pubmed_xml(xml_text: str) -> list[dict]:
     """Parse PubMed EFetch XML into structured article dicts."""
+    import logging
+    log = logging.getLogger("ai-medikelizar.pubmed")
     articles = []
 
     try:
         root = ET.fromstring(xml_text)
-    except ET.ParseError:
+    except ET.ParseError as e:
+        log.error(f"XML ParseError: {e}")
+        log.debug(f"XML preview: {xml_text[:500]}")
         return []
 
-    for i, article_elem in enumerate(root.findall(".//PubmedArticle"), start=1):
+    articles_found = root.findall(".//PubmedArticle")
+    log.debug(f"Found {len(articles_found)} PubmedArticle elements")
+
+    for i, article_elem in enumerate(articles_found, start=1):
         try:
-            medline = article_elem.find(".//MedlineCitation")
+            # Use direct child find (no .// prefix) for better compatibility
+            medline = None
+            for child in article_elem:
+                if child.tag == "MedlineCitation":
+                    medline = child
+                    break
             if medline is None:
+                # Fallback: try XPath with namespace-agnostic search
+                medline = article_elem.find(".//MedlineCitation")
+            if medline is None:
+                log.debug(f"Article {i}: No MedlineCitation found")
                 continue
 
-            article = medline.find("Article")
+            article = None
+            for child in medline:
+                if child.tag == "Article":
+                    article = child
+                    break
             if article is None:
+                article = medline.find("Article")
+            if article is None:
+                log.debug(f"Article {i}: No Article found in MedlineCitation")
                 continue
 
             # ── Title ──
@@ -252,7 +275,7 @@ def _parse_pubmed_xml(xml_text: str) -> list[dict]:
             # ── Publisher ──
             publisher = ""
             if journal_el is not None:
-                pub_el = journal.find("PublisherName") or \
+                pub_el = journal_el.find("PublisherName") or \
                          journal_el.find(".//Publisher/PublisherName")
                 if pub_el is not None:
                     publisher = pub_el.text or ""
