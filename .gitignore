@@ -3,6 +3,13 @@
 .env.local
 .env.production
 
+# Frontend config (contains API keys — use config.example.js as template)
+js/config.js
+
+# Python bytecode
+__pycache__/
+*.pyc
+
 # OS files
 .DS_Store
 Thumbs.db

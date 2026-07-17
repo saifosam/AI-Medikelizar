@@ -477,8 +477,21 @@
     </div>
   </footer>
 
-  <!-- AI provider configuration (edit js/config.js to set your API keys) -->
+  <!-- AI provider configuration (create js/config.js from config.example.js to customise) -->
   <script src="js/config.js"></script>
+  <script>
+    // Fallback if config.js doesn't exist yet (fresh clone, .gitignored)
+    if (typeof AI_CONFIG === "undefined") {
+      var AI_CONFIG = {
+        provider: "openai",
+        openai: { apiKey: "", model: "gpt-4o-mini", endpoint: "https://api.openai.com/v1" },
+        ollama: { baseUrl: "http://localhost:11434", model: "llama3.2" },
+        retrieval: { maxSources: 8, minRelevance: 0.7, cacheResults: true },
+        systemPrompt: ""
+      };
+      console.log("AI-Medikelizar: No config.js found. Using defaults. Create js/config.js from js/config.example.js to customise.");
+    }
+  </script>
   <script src="js/main.js"></script>
 </body>
 </html>

@@ -514,9 +514,9 @@
 
     // ── Log active AI provider from config ──
     if (typeof AI_CONFIG !== "undefined") {
-      console.log(
-        `Active provider: ${AI_CONFIG.provider} · Model: ${getModelName() || "N/A"}`
-      );
+      const p = AI_CONFIG.provider;
+      const m = (AI_CONFIG[p] && AI_CONFIG[p].model) || "N/A";
+      console.log(`Active provider: ${p} · Model: ${m}`);
     }
 
     // ── Theme initialisation ──

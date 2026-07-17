@@ -98,11 +98,18 @@ _js_cfg = _parse_js_config(JS_CONFIG_PATH)
 
 PROVIDER = _js_cfg.get("provider", os.getenv("AI_PROVIDER", "openai"))
 
-# Retrieve provider-specific settings with env var fallback
+# Retrieve provider-specific settings with env var override
 def _get(key: str, provider_key: str, env_var: str, default=None):
-    """Get value from JS config with env var fallback."""
+    """Get value from env with JS config fallback.
+
+    Priority: .env > js/config.js > default
+    This keeps API keys out of git — use .env for secrets.
+    """
+    env_val = os.getenv(env_var)
+    if env_val:
+        return env_val
     prov_cfg = _js_cfg.get(PROVIDER, {})
-    return prov_cfg.get(provider_key) or os.getenv(env_var) or default
+    return prov_cfg.get(provider_key) or default
 
 
 if PROVIDER == "openai":
