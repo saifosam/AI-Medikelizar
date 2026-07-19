@@ -223,6 +223,52 @@ class GoogleProvider(BaseProvider):
             raise AIProviderError(f"Unexpected Google response: {data}")
 
 
+# ── OpenRouter (OpenAI-compatible proxy) ───────────────
+
+class OpenRouterProvider(BaseProvider):
+    def __init__(self):
+        if not config.OPENROUTER_API_KEY:
+            raise AIProviderError(
+                "OpenRouter API key is not configured. "
+                "Set it in app.py or the OPENROUTER_API_KEY env var."
+            )
+        self.base_url = config.OPENROUTER_BASE_URL.rstrip("/")
+
+    @property
+    def name(self) -> str:
+        return "openrouter"
+
+    @property
+    def model_name(self) -> str:
+        return config.OPENROUTER_MODEL
+
+    async def complete(self, prompt: str, system_prompt: str) -> str:
+        endpoint = f"{self.base_url}/chat/completions"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {config.OPENROUTER_API_KEY}",
+        }
+        body = {
+            "model": config.OPENROUTER_MODEL,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": 0.3,
+            "max_tokens": 2048,
+        }
+
+        async with httpx.AsyncClient(timeout=60) as client:
+            resp = await client.post(endpoint, json=body, headers=headers)
+            resp.raise_for_status()
+            data = resp.json()
+
+        try:
+            return data["choices"][0]["message"]["content"]
+        except (KeyError, IndexError):
+            raise AIProviderError(f"Unexpected OpenRouter response: {data}")
+
+
 # ── Custom (OpenAI-compatible) ────────────────────────
 
 class CustomProvider(BaseProvider):
@@ -282,6 +328,7 @@ _PROVIDERS = {
     "ollama": OllamaProvider,
     "anthropic": AnthropicProvider,
     "google": GoogleProvider,
+    "openrouter": OpenRouterProvider,
     "custom": CustomProvider,
 }
 

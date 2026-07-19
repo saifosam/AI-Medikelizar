@@ -88,6 +88,8 @@
   const answerSourcesCount = $("#answer-sources-count");
   const confidenceValue = $("#confidence-value");
   const answerTimestamp = $("#answer-timestamp");
+  const confidenceOptions = $$(".confidence-option");
+  const confidenceHint = $("#confidence-hint");
 
   /* ─── Router ─── */
   function route(hash) {
@@ -152,6 +154,48 @@
     submitQuery(query);
   });
 
+  /* ─── Confidence selector interactivity ─── */
+  function getConfidence() {
+    const checked = document.querySelector('input[name="confidence"]:checked');
+    return checked ? checked.value : "medium";
+  }
+
+  function updateConfidenceHint(value) {
+    const hints = {
+      low: "Fewer sources, fastest response",
+      medium: "Balanced speed and thoroughness",
+      high: "Most sources, slower but comprehensive",
+    };
+    if (confidenceHint) confidenceHint.textContent = hints[value] || "";
+
+    // Update active label styling
+    confidenceOptions.forEach((opt) => {
+      opt.classList.toggle("active", opt.getAttribute("data-confidence") === value);
+    });
+  }
+
+  confidenceOptions.forEach((opt) => {
+    opt.addEventListener("click", (e) => {
+      // Don't re-trigger on inner label clicks if already the radio input
+      if (e.target.tagName === "INPUT") return;
+      const radio = opt.querySelector('input[type="radio"]');
+      if (radio) {
+        radio.checked = true;
+        updateConfidenceHint(radio.value);
+      }
+    });
+
+    // Also watch the native radio change event
+    const radio = opt.querySelector('input[type="radio"]');
+    if (radio) {
+      radio.addEventListener("change", () => {
+        if (radio.checked) {
+          updateConfidenceHint(radio.value);
+        }
+      });
+    }
+  });
+
   /* ─── Example query buttons ─── */
   exampleBtns.forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -168,6 +212,7 @@
     if (state.isStreaming) return;
 
     state.query = query;
+    const confidence = getConfidence();
 
     // Clear previous results
     resetResults();
@@ -178,6 +223,17 @@
     // Set query echo
     queryEchoText.textContent = query;
 
+    // Show confidence-aware loading message
+    const loadingText = answerLoading.querySelector(".answer-loading-text");
+    if (loadingText) {
+      const loadingMsgs = {
+        low: "Quick search in progress…",
+        medium: "Retrieving evidence from trusted sources…",
+        high: "Thorough search underway — this may take a moment…",
+      };
+      loadingText.textContent = loadingMsgs[confidence] || loadingMsgs.medium;
+    }
+
     // Show loading
     answerLoading.hidden = false;
     answerContent.hidden = true;
@@ -186,14 +242,16 @@
     state.isStreaming = true;
 
     // Try backend API first, fall back to demo
-    fetchAnswerFromBackend(query).then((result) => {
+    fetchAnswerFromBackend(query, confidence).then((result) => {
       if (result) {
         displayBackendResult(result);
       } else {
-        // Fallback: use demo data
+        // Fallback: use demo data with confidence-aware delay
+        const delays = { low: 300, medium: 800, high: 1800 };
+        const delay = delays[confidence] || 800;
         setTimeout(() => {
           generateDemoAnswer(query);
-        }, 800 + Math.random() * 600);
+        }, delay + Math.random() * 400);
       }
       state.isStreaming = false;
     });
@@ -209,12 +267,12 @@
   }
 
   /* ─── Call the FastAPI backend ─── */
-  async function fetchAnswerFromBackend(query) {
+  async function fetchAnswerFromBackend(query, confidence) {
     try {
       const resp = await fetch(`${API_BASE}/api/query`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({ query, confidence }),
         signal: AbortSignal.timeout(120000), // 2-minute timeout
       });
 
@@ -469,13 +527,9 @@
     return null;
   }
 
-  /** Apply theme to the document */
+  /** Apply theme to the document (always sets data-theme explicitly) */
   function applyTheme(theme) {
-    if (theme === "dark") {
-      document.documentElement.setAttribute("data-theme", "dark");
-    } else {
-      document.documentElement.removeAttribute("data-theme");
-    }
+    document.documentElement.setAttribute("data-theme", theme);
   }
 
   /** Resolve and apply the correct theme */
@@ -535,6 +589,13 @@
         const newTheme = resolveTheme();
         if (themeToggle) updateToggleAria(themeToggle, newTheme);
       }
+    });
+
+    // Enable CSS transitions after a brief delay (avoids flash on load)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.documentElement.classList.add("theme-ready");
+      });
     });
 
     // Initial route based on URL hash or default to home

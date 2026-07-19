@@ -11,15 +11,24 @@ Run with:
     uvicorn backend.main:app --reload --port 8000
 """
 
+import os
 import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from pathlib import Path
+
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
 from . import config
 from .models import QueryRequest, QueryResponse, HealthResponse
 from .rag_pipeline import run_pipeline
+
+# ── Project root for serving frontend ────────────────
+FRONTEND_DIR = Path(__file__).resolve().parent.parent
 
 # ═══ Logging ═══════════════════════════════════════════
 logging.basicConfig(
@@ -35,9 +44,11 @@ async def lifespan(app: FastAPI):
     """Log startup info."""
     log.info("─" * 50)
     log.info("AI-Medikelizar Backend starting")
-    log.info(f"  Provider:  {config.PROVIDER}")
-    log.info(f"  PubMed:    {'API key set' if config.PUBMED_API_KEY else 'no API key (3 req/s)'}")
-    log.info(f"  CORS:      http://localhost:5500, http://127.0.0.1:5500")
+    log.info(f"  Provider:      {config.PROVIDER}")
+    log.info(f"  Model:         {_resolve_model_name(config.PROVIDER)}")
+    log.info(f"  Confidence:    {config.DEFAULT_CONFIDENCE} (default)")
+    log.info(f"  PubMed:        {'API key set' if config.PUBMED_API_KEY else 'no API key (3 req/s)'}")
+    log.info(f"  CORS:          http://localhost:5500, http://127.0.0.1:5500")
     log.info("─" * 50)
     yield
     log.info("Shutting down.")
@@ -53,17 +64,26 @@ app = FastAPI(
 # ═══ CORS (allow frontend dev servers) ════════════════
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5500",
-        "http://127.0.0.1:5500",
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",
-        "https://saifosam.github.io",
-    ],
+    allow_origins=["*"],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── Mount frontend static files ──────────────────────
+CSS_DIR = FRONTEND_DIR / "css"
+JS_DIR = FRONTEND_DIR / "js"
+if CSS_DIR.exists():
+    app.mount("/css", StaticFiles(directory=str(CSS_DIR)), name="css")
+if JS_DIR.exists():
+    app.mount("/js", StaticFiles(directory=str(JS_DIR)), name="js")
+
+
+@app.get("/", include_in_schema=False)
+async def serve_frontend():
+    """Serve the main index.html."""
+    return FileResponse(str(FRONTEND_DIR / "index.html"))
+
 
 # ═══ Endpoints ═════════════════════════════════════════
 
@@ -76,6 +96,8 @@ async def health():
         status="ok",
         provider=provider_name,
         model=model,
+        confidence_presets=config.CONFIDENCE_PRESETS,
+        default_confidence=config.DEFAULT_CONFIDENCE,
     )
 
 
@@ -96,10 +118,16 @@ async def query(request: QueryRequest):
     if len(q) > 1000:
         raise HTTPException(status_code=400, detail="Query too long (max 1000 chars).")
 
-    log.info(f"Query: {q[:80]}{'...' if len(q) > 80 else ''}")
+    # Validate confidence level
+    confidence = request.confidence or config.DEFAULT_CONFIDENCE
+    if confidence not in config.CONFIDENCE_PRESETS:
+        confidence = config.DEFAULT_CONFIDENCE
+    preset = config.CONFIDENCE_PRESETS[confidence]
+
+    log.info(f"Query: {q[:80]}{'...' if len(q) > 80 else ''}  [confidence={confidence}, max_sources={preset['max_sources']}]")
 
     try:
-        result = await run_pipeline(q)
+        result = await run_pipeline(q, confidence=confidence)
         log.info(f"  → {len(result.sources)} sources, confidence={result.confidence}")
         return result
     except Exception as e:
@@ -118,4 +146,16 @@ def _resolve_model_name(provider_name: str) -> str:
 # ═══ Entry point ══════════════════════════════════════
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
+    port = int(os.environ.get("PORT", "8000"))
+    print()
+    print(f"  +------------------------------------------------+")
+    print(f"  |        AI-Medikelizar -- Starting Up           |")
+    print(f"  +------------------------------------------------+")
+    print(f"  |  Open:  http://localhost:{port}                   |")
+    print(f"  |  Provider: {config.PROVIDER:<25s}|")
+    model_name = _resolve_model_name(config.PROVIDER)
+    print(f"  |  Model:    {model_name:<25s}|")
+    print(f"  |  Press Ctrl+C to stop                        |")
+    print(f"  +------------------------------------------------+")
+    print()
+    uvicorn.run("backend.main:app", host="0.0.0.0", port=port, reload=True)

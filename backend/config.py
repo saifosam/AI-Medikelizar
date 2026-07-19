@@ -1,162 +1,91 @@
 """
 AI-Medikelizar — Configuration Module
-======================================
-Reads AI provider settings from:
-  1. ../js/config.js  (frontend config, parsed via regex)
-  2. .env              (environment variables, fallback)
+=======================================
+Reads settings from app.py (the single source of truth) and allows
+individual overrides via environment variables (useful for secrets).
 
-All settings are exposed as module-level constants.
+Priority:  .env / env vars  >  app.py defaults
 """
 
 import os
-import re
-import json
 from pathlib import Path
+
 from dotenv import load_dotenv
+
+from . import app as app_config
 
 # ── Paths ──────────────────────────────────────────────
 BACKEND_DIR = Path(__file__).resolve().parent
-PROJECT_DIR = BACKEND_DIR.parent
-JS_CONFIG_PATH = PROJECT_DIR / "js" / "config.js"
 ENV_PATH = BACKEND_DIR / ".env"
 
-# ── Load .env (project root takes priority over backend/) ─
+# ── Load .env ──────────────────────────────────────────
+# Backend/.env
 load_dotenv(ENV_PATH, override=True)
-PROJECT_ENV_PATH = PROJECT_DIR / ".env"
+# Project root .env (takes priority)
+PROJECT_ENV_PATH = BACKEND_DIR.parent / ".env"
 if PROJECT_ENV_PATH.exists():
     load_dotenv(PROJECT_ENV_PATH, override=True)
 
-# ── Simple JS-object parser for config.js ──────────────
-def _parse_js_config(path: Path) -> dict:
-    """Extract key-value pairs from the JS config file using regex."""
-    if not path.exists():
-        return {}
+# Helper: env var > app.py default
+def _env(key: str, fallback):
+    """Return env var if set, else fallback value."""
+    return os.getenv(key, fallback)
 
-    text = path.read_text(encoding="utf-8")
+# ══════════════════════════════════════════════════════
+# Active Provider
+# ══════════════════════════════════════════════════════
+PROVIDER = os.getenv("AI_PROVIDER", app_config.AI_PROVIDER)
 
-    def _find(pattern: str, default=None):
-        m = re.search(pattern, text, re.MULTILINE)
-        return m.group(1).strip() if m else default
+# ══════════════════════════════════════════════════════
+# Google Gemini
+# ══════════════════════════════════════════════════════
+GOOGLE_API_KEY = _env("GOOGLE_API_KEY", app_config.AI_GOOGLE_API_KEY)
+GOOGLE_MODEL   = _env("GOOGLE_MODEL",   app_config.AI_GOOGLE_MODEL)
 
-    # Determine active provider (env takes priority)
-    provider = (
-        os.getenv("AI_PROVIDER")
-        or _find(r'provider\s*:\s*"([^"]+)"')
-        or "openai"
-    )
+# ══════════════════════════════════════════════════════
+# OpenRouter
+# ══════════════════════════════════════════════════════
+OPENROUTER_API_KEY   = _env("OPENROUTER_API_KEY",   app_config.AI_OPENROUTER_API_KEY)
+OPENROUTER_MODEL     = _env("OPENROUTER_MODEL",     app_config.AI_OPENROUTER_MODEL)
+OPENROUTER_BASE_URL  = _env("OPENROUTER_BASE_URL",  app_config.AI_OPENROUTER_BASE_URL)
 
-    cfg = {"provider": provider}
+# ══════════════════════════════════════════════════════
+# Ollama (local)
+# ══════════════════════════════════════════════════════
+OLLAMA_MODEL     = _env("OLLAMA_MODEL",     app_config.AI_OLLAMA_MODEL)
+OLLAMA_BASE_URL  = _env("OLLAMA_BASE_URL",  app_config.AI_OLLAMA_BASE_URL)
 
-    # Provider-specific settings
-    provider_key_patterns = {
-        "openai": {
-            "apiKey": r'apiKey\s*:\s*"([^"]*)"',
-            "model": r'openai\s*:\s*\{[^}]*?model\s*:\s*"([^"]*)"',
-            "endpoint": r'openai\s*:\s*\{[^}]*?endpoint\s*:\s*"([^"]*)"',
-        },
-        "ollama": {
-            "baseUrl": r'baseUrl\s*:\s*"([^"]*)"',
-            "model": r'ollama\s*:\s*\{[^}]*?model\s*:\s*"([^"]*)"',
-        },
-        "anthropic": {
-            "apiKey": r'anthropic\s*:\s*\{[^}]*?apiKey\s*:\s*"([^"]*)"',
-            "model": r'anthropic\s*:\s*\{[^}]*?model\s*:\s*"([^"]*)"',
-        },
-        "google": {
-            "apiKey": r'google\s*:\s*\{[^}]*?apiKey\s*:\s*"([^"]*)"',
-            "model": r'google\s*:\s*\{[^}]*?model\s*:\s*"([^"]*)"',
-        },
-        "custom": {
-            "apiKey": r'custom\s*:\s*\{[^}]*?apiKey\s*:\s*"([^"]*)"',
-            "endpoint": r'custom\s*:\s*\{[^}]*?endpoint\s*:\s*"([^"]*)"',
-            "model": r'custom\s*:\s*\{[^}]*?model\s*:\s*"([^"]*)"',
-        },
-    }
+# ══════════════════════════════════════════════════════
+# PubMed E-utilities
+# ══════════════════════════════════════════════════════
+PUBMED_API_KEY = _env("PUBMED_API_KEY", app_config.PUBMED_API_KEY)
+PUBMED_EMAIL   = _env("PUBMED_EMAIL",   app_config.PUBMED_EMAIL)
+PUBMED_TOOL    = _env("PUBMED_TOOL",    app_config.PUBMED_TOOL)
 
-    for prov, patterns in provider_key_patterns.items():
-        for key, pattern in patterns.items():
-            value = _find(pattern)
-            if value is not None:
-                cfg.setdefault(prov, {})[key] = value
+# ══════════════════════════════════════════════════════
+# Retrieval
+# ══════════════════════════════════════════════════════
+DEFAULT_CONFIDENCE = _env("DEFAULT_CONFIDENCE", app_config.DEFAULT_CONFIDENCE)
+CONFIDENCE_PRESETS = app_config.CONFIDENCE_PRESETS
+MAX_SOURCES    = int(_env("MAX_SOURCES",    app_config.MAX_SOURCES))
+MIN_RELEVANCE  = float(_env("MIN_RELEVANCE",  app_config.MIN_RELEVANCE))
+CACHE_RESULTS  = _env("CACHE_RESULTS", str(app_config.CACHE_RESULTS)).lower() == "true"
 
-    # System prompt
-    sp = re.search(r"systemPrompt\s*:\s*`([^`]*)`", text, re.DOTALL)
-    if sp:
-        cfg["systemPrompt"] = sp.group(1).strip()
+# ══════════════════════════════════════════════════════
+# Legacy Providers (OpenAI, Anthropic, Custom)
+# Still supported if you switch AI_PROVIDER, but configurable
+# via env vars only (not in app.py).
+# ══════════════════════════════════════════════════════
+OPENAI_API_KEY     = _env("OPENAI_API_KEY", "")
+OPENAI_MODEL       = _env("OPENAI_MODEL", "gpt-4o-mini")
+OPENAI_ENDPOINT    = _env("OPENAI_ENDPOINT", "https://api.openai.com/v1")
+ANTHROPIC_API_KEY  = _env("ANTHROPIC_API_KEY", "")
+ANTHROPIC_MODEL    = _env("ANTHROPIC_MODEL", "claude-3-haiku-20240307")
+CUSTOM_API_KEY     = _env("CUSTOM_API_KEY", "")
+CUSTOM_ENDPOINT    = _env("CUSTOM_ENDPOINT", "")
+CUSTOM_MODEL       = _env("CUSTOM_MODEL", "")
 
-    # Retrieval settings
-    cfg.setdefault("retrieval", {})
-    for key in ("maxSources", "minRelevance", "cacheResults"):
-        val = _find(rf"{key}\s*:\s*([^,\n}}]+)")
-        if val is not None:
-            try:
-                cfg["retrieval"][key] = json.loads(val)
-            except json.JSONDecodeError:
-                cfg["retrieval"][key] = val
-
-    return cfg
-
-
-# ── Read config ────────────────────────────────────────
-_js_cfg = _parse_js_config(JS_CONFIG_PATH)
-
-PROVIDER = os.getenv("AI_PROVIDER") or _js_cfg.get("provider", "openai")
-
-# Retrieve provider-specific settings with env var override
-def _get(key: str, provider_key: str, env_var: str, default=None):
-    """Get value from env with JS config fallback.
-
-    Priority: .env > js/config.js > default
-    This keeps API keys out of git — use .env for secrets.
-    """
-    env_val = os.getenv(env_var)
-    if env_val:
-        return env_val
-    prov_cfg = _js_cfg.get(PROVIDER, {})
-    return prov_cfg.get(provider_key) or default
-
-
-if PROVIDER == "openai":
-    OPENAI_API_KEY = _get("openai", "apiKey", "OPENAI_API_KEY", "")
-    OPENAI_MODEL = _get("openai", "model", "OPENAI_MODEL", "gpt-4o-mini")
-    OPENAI_ENDPOINT = _get("openai", "endpoint", "OPENAI_ENDPOINT",
-                           "https://api.openai.com/v1")
-elif PROVIDER == "ollama":
-    OLLAMA_BASE_URL = _get("ollama", "baseUrl", "OLLAMA_BASE_URL",
-                           "http://localhost:11434")
-    OLLAMA_MODEL = _get("ollama", "model", "OLLAMA_MODEL", "llama3.2")
-elif PROVIDER == "anthropic":
-    ANTHROPIC_API_KEY = _get("anthropic", "apiKey", "ANTHROPIC_API_KEY", "")
-    ANTHROPIC_MODEL = _get("anthropic", "model", "ANTHROPIC_MODEL",
-                           "claude-3-haiku-20240307")
-elif PROVIDER == "google":
-    GOOGLE_API_KEY = _get("google", "apiKey", "GOOGLE_API_KEY", "")
-    GOOGLE_MODEL = _get("google", "model", "GOOGLE_MODEL", "gemini-1.5-flash")
-elif PROVIDER == "custom":
-    CUSTOM_API_KEY = _get("custom", "apiKey", "CUSTOM_API_KEY", "")
-    CUSTOM_ENDPOINT = _get("custom", "endpoint", "CUSTOM_ENDPOINT", "")
-    CUSTOM_MODEL = _get("custom", "model", "CUSTOM_MODEL", "")
-
-# ── PubMed API ────────────────────────────────────────
-PUBMED_API_KEY = os.getenv("PUBMED_API_KEY", "")
-PUBMED_EMAIL = os.getenv("PUBMED_EMAIL", "user@example.com")
-PUBMED_TOOL = os.getenv("PUBMED_TOOL", "AI-Medikelizar")
-
-# ── Retrieval ─────────────────────────────────────────
-MAX_SOURCES = _js_cfg.get("retrieval", {}).get("maxSources",
-                   int(os.getenv("MAX_SOURCES", "8")))
-MIN_RELEVANCE = _js_cfg.get("retrieval", {}).get("minRelevance",
-                   float(os.getenv("MIN_RELEVANCE", "0.7")))
-CACHE_RESULTS = _js_cfg.get("retrieval", {}).get("cacheResults",
-                   os.getenv("CACHE_RESULTS", "true").lower() == "true")
-
-# ── System prompt ─────────────────────────────────────
-SYSTEM_PROMPT = _js_cfg.get("systemPrompt") or (
-    "You are a clinical reference assistant. Answer the user's question "
-    "using ONLY the provided source texts. Cite every factual claim with "
-    "its source number in square brackets, e.g. [1]. Never fabricate "
-    "references or infer beyond what the sources state. If the sources are "
-    "insufficient to answer, state that clearly. Use precise medical "
-    "terminology but explain it briefly. Format your response in clear "
-    "paragraphs with bold headings for sections."
-)
+# ══════════════════════════════════════════════════════
+# System Prompt
+# ══════════════════════════════════════════════════════
+SYSTEM_PROMPT = _env("SYSTEM_PROMPT", app_config.SYSTEM_PROMPT)

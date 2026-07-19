@@ -11,6 +11,7 @@ from typing import Optional
 class QueryRequest(BaseModel):
     """Incoming user query."""
     query: str
+    confidence: str = "medium"  # "low" | "medium" | "high"
 
 
 class SourceModel(BaseModel):
@@ -38,9 +39,19 @@ class QueryResponse(BaseModel):
     model: str
 
 
+class ConfidencePreset(BaseModel):
+    """Confidence preset configuration."""
+    label: str
+    max_sources: int
+    temperature: float
+    description: str
+
+
 class HealthResponse(BaseModel):
     """Health-check endpoint response."""
     status: str
     provider: str
     model: str
     version: str = "1.0.0"
+    confidence_presets: dict = {}
+    default_confidence: str = "medium"

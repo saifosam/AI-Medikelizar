@@ -19,25 +19,34 @@ from .pubmed import search_pubmed
 from .ai_providers import get_provider, AIProviderError
 
 
-async def run_pipeline(query: str) -> QueryResponse:
+async def run_pipeline(query: str, confidence: str = "medium") -> QueryResponse:
     """
-    Execute the full RAG pipeline:
+    Execute the full RAG pipeline.
 
     Args:
         query: The user's clinical question.
+        confidence: Thoroughness level — "low" (fast), "medium" (balanced), "high" (thorough).
 
     Returns:
         QueryResponse with answer HTML and source citations.
     """
+    # Resolve confidence preset
+    preset = config.CONFIDENCE_PRESETS.get(
+        confidence, config.CONFIDENCE_PRESETS["medium"]
+    )
+    max_sources = preset["max_sources"]
+    temperature = preset["temperature"]
+
     # ── Step 1: Retrieve sources from PubMed ──────────
     try:
-        raw_sources = await search_pubmed(query)
+        raw_sources = await search_pubmed(query, max_results=max_sources)
     except Exception as e:
         # If PubMed fails, return an error message
         return _error_response(
             f"Failed to search PubMed: {str(e)}",
             provider="n/a",
             model="n/a",
+            confidence=confidence,
         )
 
     if not raw_sources:
@@ -46,13 +55,14 @@ async def run_pipeline(query: str) -> QueryResponse:
             "Try rephrasing your question or using broader medical terms.",
             provider="n/a",
             model="n/a",
+            confidence=confidence,
         )
 
     # Convert to SourceModel instances
     sources = [SourceModel(**s) for s in raw_sources]
 
     # ── Step 2: Build the prompt ──────────────────────
-    prompt = _build_prompt(query, sources)
+    prompt = _build_prompt(query, sources, temperature)
 
     # ── Step 3: Call the AI provider ──────────────────
     try:
@@ -63,19 +73,18 @@ async def run_pipeline(query: str) -> QueryResponse:
             f"AI provider error: {str(e)}",
             provider=config.PROVIDER,
             model=_get_model_name(),
+            confidence=confidence,
         )
     except Exception as e:
         return _error_response(
             f"Unexpected error calling AI provider: {str(e)}",
             provider=config.PROVIDER,
             model=_get_model_name(),
+            confidence=confidence,
         )
 
     # ── Step 4: Convert answer text to HTML ───────────
     answer_html = _text_to_html(answer_text, sources)
-
-    # ── Step 5: Compute confidence ────────────────────
-    confidence = _compute_confidence(sources)
 
     return QueryResponse(
         answer=answer_html,
@@ -86,8 +95,16 @@ async def run_pipeline(query: str) -> QueryResponse:
     )
 
 
-def _build_prompt(query: str, sources: list[SourceModel]) -> str:
+def _build_prompt(query: str, sources: list[SourceModel], temperature: float = 0.3) -> str:
     """Build the prompt with source context for the AI provider."""
+    confidence_note = (
+        "Be concise and direct. Prioritise the most clinically relevant findings. "
+        if temperature >= 0.5 else
+        "Be thorough and detailed. Cover all relevant aspects comprehensively. "
+        if temperature <= 0.15 else
+        "Provide a balanced answer with appropriate detail. "
+    )
+
     parts = [
         f"## Clinical Question\n{query}\n",
         f"## Retrieved Evidence ({len(sources)} sources)\n",
@@ -105,6 +122,7 @@ def _build_prompt(query: str, sources: list[SourceModel]) -> str:
 
     parts.append(
         "## Instructions\n"
+        f"{confidence_note}"
         "Using ONLY the sources above, answer the clinical question. "
         "Cite each claim with the source number in brackets, e.g. [1]. "
         "If multiple sources support a claim, cite all of them, e.g. [1][2]. "
@@ -164,19 +182,6 @@ def _text_to_html(text: str, sources: list[SourceModel]) -> str:
     return "\n".join(html_paragraphs)
 
 
-def _compute_confidence(sources: list[SourceModel]) -> str:
-    """Determine confidence level based on source relevance scores."""
-    if not sources:
-        return "limited"
-    avg_relevance = sum(s.relevance for s in sources) / len(sources)
-    if avg_relevance >= 0.85:
-        return "high"
-    elif avg_relevance >= 0.7:
-        return "moderate"
-    else:
-        return "limited"
-
-
 def _get_model_name() -> str:
     """Get the model name from config, or n/a if not set."""
     provider_name = config.PROVIDER
@@ -186,12 +191,12 @@ def _get_model_name() -> str:
     return "n/a"
 
 
-def _error_response(message: str, provider: str, model: str) -> QueryResponse:
+def _error_response(message: str, provider: str, model: str, confidence: str = "medium") -> QueryResponse:
     """Build an error response as a valid QueryResponse."""
     return QueryResponse(
         answer=f"<p>{message}</p>",
         sources=[],
-        confidence="limited",
+        confidence=confidence,
         provider=provider,
         model=model,
     )

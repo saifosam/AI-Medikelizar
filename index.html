@@ -10,8 +10,14 @@
   <script>
     (function() {
       var t = localStorage.getItem("ai-medikelizar-theme");
-      if (t === "dark" || (!t && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+      if (t === "dark") {
         document.documentElement.setAttribute("data-theme", "dark");
+      } else if (t === "light") {
+        document.documentElement.setAttribute("data-theme", "light");
+      } else {
+        // No stored preference — follow system
+        var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        document.documentElement.setAttribute("data-theme", prefersDark ? "dark" : "light");
       }
     })();
   </script>
@@ -110,7 +116,38 @@
                 </svg>
               </button>
             </div>
-            <p id="query-hint" class="query-hint">Press <kbd>Enter</kbd> to search. Example queries below.</p>
+
+            <!-- Confidence selector -->
+            <div class="confidence-selector" role="radiogroup" aria-label="Search thoroughness">
+              <span class="confidence-selector-label">Thoroughness:</span>
+              <label class="confidence-option" data-confidence="low" data-hint="Fewer sources, fastest response">
+                <input type="radio" name="confidence" value="low" autocomplete="off">
+                <span class="confidence-option-indicator"></span>
+                <span class="confidence-option-text">
+                  <span class="confidence-option-name">Fast</span>
+                  <span class="confidence-option-desc">~3 sources</span>
+                </span>
+              </label>
+              <label class="confidence-option" data-confidence="medium" data-hint="Balanced speed and thoroughness">
+                <input type="radio" name="confidence" value="medium" checked autocomplete="off">
+                <span class="confidence-option-indicator"></span>
+                <span class="confidence-option-text">
+                  <span class="confidence-option-name">Balanced</span>
+                  <span class="confidence-option-desc">~6 sources</span>
+                </span>
+              </label>
+              <label class="confidence-option" data-confidence="high" data-hint="Most sources, slower but comprehensive">
+                <input type="radio" name="confidence" value="high" autocomplete="off">
+                <span class="confidence-option-indicator"></span>
+                <span class="confidence-option-text">
+                  <span class="confidence-option-name">Thorough</span>
+                  <span class="confidence-option-desc">~12 sources</span>
+                </span>
+              </label>
+              <span class="confidence-hint" id="confidence-hint" aria-live="polite">Balanced speed and thoroughness</span>
+            </div>
+
+            <p id="query-hint" class="query-hint">Press <kbd>Enter</kbd> to search. Higher thoroughness = more sources, longer wait.</p>
           </form>
         </div>
 
