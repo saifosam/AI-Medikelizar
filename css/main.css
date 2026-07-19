@@ -153,6 +153,82 @@ ul { list-style: none; }
 .skip-link:focus { top: 0; text-decoration: none; }
 
 /* ═══════════════════════════════════════════════════
+   AUTH SCREEN
+   ═══════════════════════════════════════════════════ */
+.auth-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem 1.5rem;
+  background: var(--bg-page);
+}
+
+.auth-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 24rem;
+  width: 100%;
+}
+
+.auth-logo {
+  font-size: 3rem;
+  line-height: 1;
+  margin-bottom: 1rem;
+}
+
+.auth-heading {
+  font-family: "Source Serif 4", Georgia, "Times New Roman", serif;
+  font-weight: 600;
+  font-size: 1.75rem;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  margin-bottom: 0.25rem;
+}
+
+.auth-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+  margin-bottom: 1.5rem;
+}
+
+.auth-description {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 2rem;
+}
+
+.auth-sign-in {
+  width: 100%;
+}
+
+/* Clerk sign-in component overrides to match our theme */
+.auth-sign-in .cl-card {
+  box-shadow: none !important;
+  border: 1px solid var(--border-light) !important;
+  border-radius: 8px !important;
+}
+
+/* ─── User button in header ─── */
+.header-user-button {
+  display: flex;
+  align-items: center;
+  margin-right: 0.25rem;
+}
+
+/* Fallback: show user button inline */
+.cl-userButtonTrigger {
+  width: 2rem !important;
+  height: 2rem !important;
+}
+
+/* ═══════════════════════════════════════════════════
    DISCLAIMER BANNER
    ═══════════════════════════════════════════════════ */
 .disclaimer-banner {

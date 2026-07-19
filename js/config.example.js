@@ -53,6 +53,11 @@ const AI_CONFIG = {
     model: "",
   },
 
+  /* ── Clerk Authentication ── */
+  clerk: {
+    publishableKey: "",   // Set in index.html or via Vercel env var
+  },
+
   /* ── Retrieval settings ── */
   retrieval: {
     maxSources: 8,

@@ -6,16 +6,21 @@
   <meta name="description" content="AI-Medikelizar — A clinical reference tool for evidence-based medical information grounded in trusted sources.">
   <title>AI-Medikelizar — Clinical Reference Tool</title>
 
-  <!-- Inline script to prevent flash of wrong theme -->
+  <!-- Inline script to prevent flash of wrong theme & hide app before Clerk loads -->
   <script>
     (function() {
+      // Hide the main app immediately to prevent flash before Clerk auth
+      var s = document.createElement('style');
+      s.textContent = '#app { display: none !important; }';
+      document.documentElement.appendChild(s);
+
+      // Dark mode theme
       var t = localStorage.getItem("ai-medikelizar-theme");
       if (t === "dark") {
         document.documentElement.setAttribute("data-theme", "dark");
       } else if (t === "light") {
         document.documentElement.setAttribute("data-theme", "light");
       } else {
-        // No stored preference — follow system
         var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
         document.documentElement.setAttribute("data-theme", prefersDark ? "dark" : "light");
       }
@@ -31,6 +36,20 @@
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='28' font-size='24'%3E⚕%3C/text%3E%3C/svg%3E">
 </head>
 <body>
+
+  <!-- ════════════════ AUTH SCREEN (shown when signed out) ════════════════ -->
+  <div id="auth-screen" class="auth-screen">
+    <div class="auth-container">
+      <div class="auth-logo" aria-hidden="true">⚕</div>
+      <h1 class="auth-heading">AI-Medikelizar</h1>
+      <p class="auth-subtitle">Clinical Reference Tool</p>
+      <p class="auth-description">Sign in to access evidence-based medical information grounded in trusted sources.</p>
+      <div id="sign-in" class="auth-sign-in"></div>
+    </div>
+  </div>
+
+  <!-- ════════════════ MAIN APP (visible when signed in) ════════════════ -->
+  <div id="app">
 
   <!-- ════════════════ Skip to main content ════════════════ -->
   <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -53,6 +72,9 @@
       </a>
 
       <div class="header-controls">
+        <!-- Clerk user button (shown when signed in) -->
+        <div id="user-button" class="header-user-button"></div>
+
         <button class="theme-toggle" id="theme-toggle" aria-label="Switch to dark mode" title="Switch to dark mode">
           <!-- Moon icon (light mode → click to go dark) -->
           <svg class="moon-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -514,6 +536,25 @@
     </div>
   </footer>
 
+  </div><!-- /#app -->
+
+  <!-- ════════════════ Clerk Auth ════════════════ -->
+  <!-- Clerk UI bundle (prebuilt components) -->
+  <script
+    defer
+    crossorigin="anonymous"
+    src="https://feasible-stork-18.clerk.accounts.dev/npm/@clerk/ui@1/dist/ui.browser.js"
+    type="text/javascript"
+  ></script>
+  <!-- Clerk SDK -->
+  <script
+    defer
+    crossorigin="anonymous"
+    data-clerk-publishable-key="pk_test_ZmVhc2libGUtc3RvcmstMTguY2xlcmsuYWNjb3VudHMuZGV2JA"
+    src="https://feasible-stork-18.clerk.accounts.dev/npm/@clerk/clerk-js@6/dist/clerk.browser.js"
+    type="text/javascript"
+  ></script>
+
   <!-- AI provider configuration (create js/config.js from config.example.js to customise) -->
   <script src="js/config.js"></script>
   <script>
@@ -530,5 +571,40 @@
     }
   </script>
   <script src="js/main.js"></script>
+
+  <!-- Clerk auth init (runs after everything loads) -->
+  <script>
+    window.addEventListener('load', async function () {
+      try {
+        await Clerk.load({
+          ui: { ClerkUI: window.__internal_ClerkUICtor },
+        });
+
+        if (Clerk.isSignedIn) {
+          // Show the app
+          document.getElementById('auth-screen').style.display = 'none';
+          document.getElementById('app').style.display = 'block';
+          // Mount user button
+          var userBtn = document.getElementById('user-button');
+          if (userBtn) {
+            Clerk.mountUserButton(userBtn);
+          }
+        } else {
+          // Show sign-in screen
+          document.getElementById('auth-screen').style.display = 'flex';
+          document.getElementById('app').style.display = 'none';
+          var signInDiv = document.getElementById('sign-in');
+          if (signInDiv) {
+            Clerk.mountSignIn(signInDiv);
+          }
+        }
+      } catch (err) {
+        console.error('Clerk auth failed:', err);
+        // Fallback: show the app anyway if Clerk fails to load
+        document.getElementById('auth-screen').style.display = 'none';
+        document.getElementById('app').style.display = 'block';
+      }
+    });
+  </script>
 </body>
 </html>
