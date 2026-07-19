@@ -5,8 +5,18 @@
 "use strict";
 
 (function () {
-  /* ─── Backend API URL ─── */
-  const API_BASE = "http://localhost:8000";
+  /* ─── Backend API URL ───
+     Automatically uses localhost:8000 during development and the
+     same origin (relative URL) when deployed on Vercel (frontend
+     and API are served from the same domain).
+     Override by setting the SCRIPT_URL env var at build time. */
+  const API_BASE = (
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1" ||
+    window.location.hostname === ""
+  )
+    ? "http://localhost:8000"
+    : "";    // same origin → relative URLs work
 
   /* ─── State ─── */
   const state = {

@@ -48,7 +48,7 @@ async def lifespan(app: FastAPI):
     log.info(f"  Model:         {_resolve_model_name(config.PROVIDER)}")
     log.info(f"  Confidence:    {config.DEFAULT_CONFIDENCE} (default)")
     log.info(f"  PubMed:        {'API key set' if config.PUBMED_API_KEY else 'no API key (3 req/s)'}")
-    log.info(f"  CORS:          http://localhost:5500, http://127.0.0.1:5500")
+    log.info(f"  CORS:          * (configure via CORS_ORIGINS env var for production)")
     log.info("─" * 50)
     yield
     log.info("Shutting down.")
@@ -61,7 +61,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# ═══ CORS (allow frontend dev servers) ════════════════
+# ═══ CORS (allow frontend dev servers & Vercel production) ═
+# In production (e.g., Vercel), frontend and API are on the same
+# origin, so CORS is mostly needed for local development.
+# Restrict origins in production by setting the CORS_ORIGINS
+# environment variable (comma-separated).
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

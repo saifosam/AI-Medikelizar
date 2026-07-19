@@ -46,7 +46,7 @@ AI-Medikelizar solves this by **restricting retrieval to a curated allowlist of 
 | **AI provider** | OpenAI API (default) or local models via Ollama (configurable) |
 | **Retrieval** | Scoped Custom Search Engine or per-source APIs (configurable) |
 | **Dark mode** | CSS custom properties with `prefers-color-scheme` detection, manual toggle, and localStorage persistence |
-| **Deployment** | GitHub Pages via GitHub Actions |
+| **Deployment** | Vercel (frontend static + serverless Python backend) |
 
 ---
 
@@ -172,6 +172,95 @@ If everything is configured, you'll get back a JSON response with `answer` (HTML
 
 ---
 
+## Deploy to Vercel
+
+AI-Medikelizar is designed to deploy easily on Vercel — the frontend as a static site and the backend as a serverless Python function.
+
+### Prerequisites
+
+- A [Vercel](https://vercel.com) account (free tier works)
+- Your project pushed to a [GitHub](https://github.com) repository
+- API keys for your chosen AI provider (set via Vercel Environment Variables)
+
+### One-click deploy
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fsaifosam%2FAI-Medikelizar)
+
+> ⚠️ The button above points to the original repo. If you forked the project, replace `saifosam/AI-Medikelizar` with your own repo URL.
+
+### Manual deploy
+
+#### 1. Push to GitHub
+
+```bash
+git init
+git add .
+git commit -m "Initial commit"
+git remote add origin https://github.com/your-username/AI-Medikelizar.git
+git push -u origin main
+```
+
+#### 2. Import to Vercel
+
+1. Go to [vercel.com/new](https://vercel.com/new)
+2. Import your GitHub repository
+3. Vercel auto-detects the project settings from `vercel.json`
+4. No build command needed — the default "Other" framework works
+
+#### 3. Set environment variables
+
+In the Vercel project dashboard → **Settings** → **Environment Variables**, add:
+
+```
+AI_PROVIDER=openai
+OPENAI_API_KEY=sk-your-openai-api-key
+OPENAI_MODEL=gpt-4o-mini
+PUBMED_EMAIL=your.email@example.com
+PUBMED_API_KEY=your_ncbi_api_key    # Optional
+```
+
+Or for other providers, see [`.env.example`](.env.example) for the full list.
+
+> ⚠️ Never commit real API keys to git. Vercel Environment Variables are encrypted and kept secure.
+
+#### 4. Deploy
+
+Vercel automatically deploys on every `git push` to the main branch.
+
+- **Frontend:** `https://your-project.vercel.app`
+- **Backend API:** `https://your-project.vercel.app/api/health`
+- The frontend auto-detects it's on Vercel and uses relative API URLs
+
+### Architecture on Vercel
+
+```
+                          ┌──────────────────────┐
+                          │   Vercel Edge Network │
+                          └──────────┬───────────┘
+                                     │
+                    ┌────────────────┼────────────────┐
+                    │                │                 │
+                    ▼                ▼                 ▼
+           ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+           │ Static Files  │  │   /api/*     │  │   SPA        │
+           │ (HTML/CSS/JS) │  │  Serverless  │  │   Catch-all  │
+           │              │  │   Function   │  │   → index.html│
+           └──────────────┘  └──────┬───────┘  └──────────────┘
+                                    │
+                           ┌────────┴────────┐
+                           │  FastAPI Backend │
+                           │  Python 3.12    │
+                           │  RAG Pipeline   │
+                           └─────────────────┘
+```
+
+**Limitations on the Hobby plan:**
+- Serverless function timeout: **10 seconds** (may affect "Thorough" confidence level)
+- Upgrade to **Pro** ($20/mo) for 30-second timeout and 512MB memory
+- The demo mode works instantly — no backend required
+
+---
+
 ### AI provider configuration
 
 Edit **`js/config.js`** (or `.env`) to choose your AI provider and set API keys. The config supports five providers:
@@ -237,14 +326,33 @@ AI-Medikelizar/
 │   ├── ai_providers.py         # 5 providers: OpenAI, Ollama, Anthropic, Google, Custom
 │   ├── rag_pipeline.py         # RAG orchestrator: search → retrieve → summarize
 │   └── requirements.txt        # fastapi, uvicorn, httpx, python-dotenv
+├── api/
+│   └── index.py                # Vercel serverless entry point (FastAPI → ASGI)
+├── backend/
+│   ├── __init__.py             # Package marker
+│   ├── main.py                 # FastAPI app: /api/query, /api/health, CORS
+│   ├── config.py               # Reads config, env vars, PubChem settings
+│   ├── models.py               # Pydantic request/response schemas
+│   ├── pubmed.py               # PubMed ESearch + EFetch (NCBI E-utilities)
+│   ├── ai_providers.py         # 5 providers: OpenAI, Ollama, Anthropic, Google, Custom
+│   ├── rag_pipeline.py         # RAG orchestrator: search → retrieve → summarize
+│   └── requirements.txt        # fastapi, uvicorn, httpx, python-dotenv, asgiref
+├── css/
+│   └── main.css                # Full design system & responsive styles
+├── js/
+│   ├── config.example.js       # Safe template — copy to config.js (DO NOT EDIT)
+│   ├── config.js               # ⚠️ Your real config — gitignored, never committed
+│   └── main.js                 # Application logic, router, demo data
 ├── .github/
 │   └── workflows/
-│       └── pages.yml           # GitHub Actions deployment workflow
+│       └── pages.yml           # GitHub Pages deployment workflow (alternative)
+├── vercel.json                 # Vercel deployment configuration
 ├── .env.example                # Safe template — copy to .env with your keys
 ├── .env                        # ⚠️ Your real keys — gitignored, never committed
-├── .gitignore                  # Git ignore rules (config.js, .env, etc.)
+├── .gitignore                  # Git ignore rules (config.js, .env, .vercel, etc.)
 ├── LICENSE                     # MIT license
-└── README.md                   # This file
+├── README.md                   # This file
+└── run.py                      # Local dev launcher
 ```
 
 ### Page views (hash-routed)

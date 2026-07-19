@@ -19,3 +19,12 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+# Vercel
+.vercel/
+.vc/
+
+# Python virtual environment
+venv/
+.venv/
+env/
