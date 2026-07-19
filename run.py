@@ -30,5 +30,5 @@ if __name__ == "__main__":
     # Auto-open browser
     webbrowser.open(f"http://localhost:{port}", autoraise=False)
 
-    # Start the server
-    uvicorn.run(app, host=host, port=port, reload=True)
+    # Start the server (string reference needed for reliable reload)
+    uvicorn.run("backend.main:app", host=host, port=port, reload=True)
