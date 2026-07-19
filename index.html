@@ -11,6 +11,7 @@
     (function() {
       // Hide the main app immediately to prevent flash before Clerk auth
       var s = document.createElement('style');
+      s.id = 'anti-flash-style';
       s.textContent = '#app { display: none !important; }';
       document.documentElement.appendChild(s);
 
@@ -580,6 +581,10 @@
           ui: { ClerkUI: window.__internal_ClerkUICtor },
         });
 
+        // Remove the anti-flash style so inline styles work
+        var antiFlash = document.getElementById('anti-flash-style');
+        if (antiFlash) antiFlash.remove();
+
         if (Clerk.isSignedIn) {
           // Show the app
           document.getElementById('auth-screen').style.display = 'none';
@@ -601,6 +606,8 @@
       } catch (err) {
         console.error('Clerk auth failed:', err);
         // Fallback: show the app anyway if Clerk fails to load
+        var antiFlash = document.getElementById('anti-flash-style');
+        if (antiFlash) antiFlash.remove();
         document.getElementById('auth-screen').style.display = 'none';
         document.getElementById('app').style.display = 'block';
       }
