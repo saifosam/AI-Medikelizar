@@ -8,9 +8,24 @@ The single source of truth for provider and model configuration is
 edit it — that's the only file you need to touch.
 
 Priority:  .env / env vars  >  hardcoded defaults below
+
+╔═══════════════════════════════════════════════════════════╗
+║  Security: Server-Side Only                              ║
+║  ─────────────────────────────                           ║
+║  Server-Side Only — The Critical Guard                   ║
+║  This module runs 100% on the server, never in the       ║
+║  browser. Python modules are inherently server-only —    ║
+║  no import guard needed (unlike Next.js `server-only`).  ║
+║                                                           ║
+║  require_env() — Fail-Fast Safety Net                    ║
+║  Crashes the server IMMEDIATELY at module import time    ║
+║  if a required environment variable is missing.           ║
+║  No silent failures, no running in a broken state.        ║
+╚═══════════════════════════════════════════════════════════╝
 """
 
 import os
+import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -29,7 +44,112 @@ PROJECT_ENV_PATH = BACKEND_DIR.parent / ".env"
 if PROJECT_ENV_PATH.exists():
     load_dotenv(PROJECT_ENV_PATH, override=True)
 
-# Helper: env var > fallback
+# ═══════════════════════════════════════════════════════════
+# require_env() — Fail fast at module import time
+# ═══════════════════════════════════════════════════════════
+# Mirrors the Next.js reference pattern EXACTLY:
+#   function requireEnv(name: string): string {
+#     const value = process.env[name]
+#     if (!value) { throw new Error(`Missing required ...`) }
+#     return value
+#   }
+# This crashes IMMEDIATELY at module import time if a
+# critical key is missing — no silent failures.
+
+def require_env(name: str) -> str:
+    """
+    Return the environment variable, or crash IMMEDIATELY at module
+    import time if it's not set. This is a compile-time safety net
+    that prevents the server from running with missing configuration.
+
+    Mirrors the reference pattern:
+      function requireEnv(name: string): string {
+        const value = process.env[name]
+        if (!value) { throw new Error(`Missing required ...`) }
+        return value
+      }
+    """
+    value = os.getenv(name)
+    if not value:
+        print(f"  ❌  FATAL: Missing required environment variable: {name}", file=sys.stderr)
+        print(f"  💡  Set it in backend/.env or export it before starting.", file=sys.stderr)
+        sys.exit(1)
+    return value
+
+
+# ═══════════════════════════════════════════════════════════
+# Startup validation — check table at lifespan start
+# ═══════════════════════════════════════════════════════════
+# Defines which env vars are CRITICAL (server won't start without)
+# vs OPTIONAL (nice to have, fallback or degraded mode).
+
+CRITICAL_ENV_VARS: dict[str, str] = {
+    # Clerk authentication
+    "CLERK_SECRET_KEY": "Clerk API secret for session verification",
+}
+
+OPTIONAL_ENV_VARS: dict[str, str] = {
+    # AI Providers
+    "AI_PROVIDER": "Active AI provider (ollama, google, groq, openrouter)",
+    "GOOGLE_API_KEY": "Google Gemini API key",
+    "GROQ_API_KEY": "Groq API key (free, no credit card)",
+    "OPENROUTER_API_KEY": "OpenRouter API key",
+    # Stripe
+    "STRIPE_SECRET_KEY": "Stripe secret key for payments",
+    "STRIPE_PUBLISHABLE_KEY": "Stripe publishable key",
+    "STRIPE_WEBHOOK_SECRET": "Stripe webhook signing secret",
+    # Clerk
+    "CLERK_WEBHOOK_SECRET": "Clerk webhook signing secret",
+    # PubMed
+    "PUBMED_API_KEY": "PubMed E-utilities API key (higher rate limit)",
+    # Admin
+    "ADMIN_EMAILS": "Comma-separated list of admin email addresses",
+}
+
+
+def validate_startup_env() -> list[dict[str, str]]:
+    """
+    Check all critical and optional env vars at startup.
+    Returns a list of var status dicts for display.
+    Exits with code 1 if any critical var is missing.
+    """
+    statuses: list[dict[str, str]] = []
+    missing_critical = False
+
+    for name, purpose in CRITICAL_ENV_VARS.items():
+        value = os.getenv(name)
+        if value:
+            statuses.append({"name": name, "status": "✅ set", "purpose": purpose})
+        else:
+            statuses.append({"name": name, "status": "❌ MISSING", "purpose": purpose})
+            missing_critical = True
+
+    for name, purpose in OPTIONAL_ENV_VARS.items():
+        value = os.getenv(name)
+        if value:
+            statuses.append({"name": name, "status": "✅ set", "purpose": purpose})
+        else:
+            statuses.append({"name": name, "status": "  —", "purpose": purpose})
+
+    if missing_critical:
+        print()
+        print("  ╔═══════════════════════════════════════════════════════════╗")
+        print("  ║  FATAL: Missing required environment variables           ║")
+        print("  ║  The server cannot start without these.                  ║")
+        print("  ╚═══════════════════════════════════════════════════════════╝")
+        print()
+        for s in statuses:
+            if s["status"] == "❌ MISSING":
+                print(f"  {s['status']}  {s['name']:30s}  {s['purpose']}")
+        print()
+        print(f"  💡  Create backend/.env or export the missing variables.")
+        print()
+        sys.exit(1)
+
+    return statuses
+
+
+# Helper: env var > fallback (non-critical, returns fallback if not set)
 def _env(key: str, fallback):
     """Return env var if set, else fallback value."""
     return os.getenv(key, fallback)
@@ -109,8 +229,11 @@ STRIPE_VIP_PRICE_ID     = _env("STRIPE_VIP_PRICE_ID", "")
 # ══════════════════════════════════════════════════════
 # Clerk
 # ══════════════════════════════════════════════════════
+# CRITICAL: require_env() crashes at module import time if missing.
+# Mirrors reference: PAYMOB_SECRET_KEY = requireEnv("PAYMOB_SECRET_KEY")
+CLERK_SECRET_KEY = require_env("CLERK_SECRET_KEY")
+
 CLERK_WEBHOOK_SECRET = _env("CLERK_WEBHOOK_SECRET", "")
-CLERK_SECRET_KEY      = _env("CLERK_SECRET_KEY", "")
 
 # ══════════════════════════════════════════════════════
 # Admin

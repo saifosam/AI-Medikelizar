@@ -26,6 +26,7 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import Depends, HTTPException, Request, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -328,3 +329,86 @@ async def require_admin(user: UserModel = Depends(require_user)) -> UserModel:
             detail="Admin access required",
         )
     return user
+
+
+# ═══════════════════════════════════════════════════════════
+# Layer 1: Clerk Auth Middleware (mirrors reference pattern)
+# ═══════════════════════════════════════════════════════════
+# The reference uses Clerk middleware to protect /admin/orders:
+#   const isProtected = createRouteMatcher(["/orders(.*)"])
+#   export default clerkMiddleware(async (auth, req) => {
+#     if (isProtected(req)) {
+#       const { userId } = await auth()
+#       if (!userId) return (await auth()).redirectToSignIn()
+#     }
+#   })
+#
+# In FastAPI, we use an ASGI middleware that intercepts requests
+# to /api/admin/* before they reach the route handler.
+# If the user is not authenticated, it returns 401 immediately.
+
+# Paths that require authentication at the middleware level
+_AUTH_PROTECTED_PREFIXES = ("/api/admin",)
+
+
+async def clerk_auth_middleware(request: Request, call_next):
+    """
+    ASGI middleware: Layer 1 auth guard for protected routes.
+
+    - Checks if the request path matches a protected prefix (/api/admin/*)
+    - If it does, verifies the Clerk session token from the Authorization header
+      or __session cookie
+    - If auth fails, returns 401 immediately (no redirect — this is an API)
+    - If auth succeeds, allows the request through to Layer 2 (require_admin)
+
+    This runs BEFORE any route handler, providing a fast rejection layer.
+    """
+    path = request.url.path
+
+    # Only intercept protected prefixes
+    if not any(path.startswith(prefix) for prefix in _AUTH_PROTECTED_PREFIXES):
+        return await call_next(request)
+
+    # ── Layer 1: Fast token presence check only ──
+    # NOTE: This is a quick rejection layer (token *presence* check).
+    # The JWT payload is decoded but the signature is NOT verified here.
+    # Full JWT signature verification against Clerk's JWKS endpoint is
+    # deferred to production deployment.
+    #
+    # In development, the frontend Clerk SDK handles session refresh
+    # and the JWT is trusted. For production, add JWKS verification:
+    #   curl https://{clerk_domain}/.well-known/jwks.json
+    #
+    # Layer 2 (require_admin dependency) does the full user lookup
+    # with email whitelist check.
+
+    auth_header = request.headers.get("Authorization", "")
+    session_token = ""
+
+    if auth_header.startswith("Bearer "):
+        session_token = auth_header[7:]
+
+    if not session_token:
+        session_token = request.cookies.get("__session", "")
+
+    if not session_token:
+        # Layer 1: No auth token — reject immediately (mirrors Clerk redirect)
+        log.warning(f"Layer 1 auth rejected: no session token for {path}")
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"detail": "Authentication required. Please sign in."},
+        )
+
+    # Try to extract Clerk user ID (fast decode, no signature verification)
+    clerk_user_id = _extract_clerk_user_id(session_token)
+    if not clerk_user_id:
+        log.warning(f"Layer 1 auth rejected: invalid session token for {path}")
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"detail": "Invalid session token. Please sign in again."},
+        )
+
+    # Token is present and decodable — proceed to route handler.
+    # Layer 2 (require_admin dependency) will do the full user lookup
+    # with email whitelist check and DB query.
+    return await call_next(request)

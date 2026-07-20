@@ -1277,21 +1277,69 @@
   /* ─── Admin check ─── */
   let isAdmin = false;
 
-  /** Build Clerk user headers so the backend can create users on-the-fly */
-  function clerkUserHeaders() {
+  /**
+   * Layer 3: Client-side admin email whitelist.
+   * Mirrors the reference pattern where the shield icon only renders
+   * for admin users. Regular users don't even see it exists.
+   *
+   * This is the client-side guard. It's backed up by:
+   *   Layer 1: Clerk auth middleware (server-side, protects all /api/admin/*)
+   *   Layer 2: require_admin() dependency (server-side, email whitelist check)
+   *
+   * The list is duplicated from the backend (config.ADMIN_EMAILS) so the UI
+   * can react instantly without waiting for the server round-trip.
+   * The server is still the authoritative source — this is just UX sugar.
+   */
+  const ADMIN_EMAILS = [
+    "admin@ai-medikelizar.com",
+    "saifosam.business@gmail.com",
+    "yassinadeleid95@gmail.com",
+    "youssef.shabayek56@gmail.com",
+    "yjhf04508@gmail.com",
+  ];
+
+  /** Build Clerk auth headers including session token for backend authentication */
+  async function getAuthHeaders() {
     const h = {};
     if (window.Clerk && Clerk.user) {
       h["X-Clerk-User-Email"] = Clerk.user.primaryEmailAddress?.emailAddress || "";
       h["X-Clerk-User-Name"]  = Clerk.user.fullName || "";
+      // Get the session JWT token so the backend can authenticate us
+      try {
+        const token = await Clerk.session?.getToken();
+        if (token) {
+          h["Authorization"] = `Bearer ${token}`;
+        }
+      } catch (e) {
+        console.warn("Could not get Clerk session token:", e.message);
+      }
     }
     return h;
   }
 
   async function checkAdminStatus() {
     try {
+      // ── Client-side fast check (Layer 3: email whitelist) ──
+      // If Clerk is loaded and the user's email is in the whitelist,
+      // show the shield immediately for zero-lag UX. The server will
+      // still double-check on any admin navigation.
+      if (window.Clerk && Clerk.user) {
+        const userEmail = Clerk.user.primaryEmailAddress?.emailAddress || "";
+        const emailIsAdmin = ADMIN_EMAILS.includes(userEmail.toLowerCase());
+        if (emailIsAdmin) {
+          const adminBtn = document.getElementById("admin-shield-btn");
+          if (adminBtn) {
+            adminBtn.style.display = "flex";
+          }
+          // Don't set isAdmin=true yet — wait for server confirmation
+        }
+      }
+
+      // ── Server-side authoritative check (Layers 1 + 2) ──
+      const headers = await getAuthHeaders();
       const resp = await fetch(`${API_BASE}/api/auth/me`, {
         credentials: "include",
-        headers: clerkUserHeaders(),
+        headers: headers,
       });
       if (resp.ok) {
         const data = await resp.json();
@@ -1305,8 +1353,13 @@
           window.location.hash = "#home";
         }
       } else {
+        // Server said no — hide the shield (overrides client-side check)
+        isAdmin = false;
         const adminBtn = document.getElementById("admin-shield-btn");
         if (adminBtn) adminBtn.style.display = "none";
+        if (window.location.hash === "#admin") {
+          window.location.hash = "#home";
+        }
       }
     } catch (e) {
       console.debug("Could not check admin status:", e.message);
@@ -1340,9 +1393,10 @@
       }
       // Double-check with server
       try {
+        const headers = await getAuthHeaders();
         const resp = await fetch(`${API_BASE}/api/auth/me`, {
           credentials: "include",
-          headers: clerkUserHeaders(),
+          headers: headers,
         });
         if (!resp.ok) {
           window.location.hash = "#home";

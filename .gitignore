@@ -33,3 +33,11 @@ venv/
 .venv/
 env/
 .vercel
+
+# SQLite database (contains user data)
+*.db
+backend/*.db
+
+# Log files (may contain sensitive info)
+*.log
+server.log

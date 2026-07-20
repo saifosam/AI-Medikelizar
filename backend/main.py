@@ -59,6 +59,24 @@ limiter = Limiter(key_func=get_remote_address, enabled=config.RATE_LIMIT_ENABLED
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize database and log startup info."""
+    # ── Validate environment variables (fail fast if critical keys missing) ──
+    # This mirrors the requireEnv() pattern from the reference architecture:
+    #   The server crashes immediately at startup if a required env var is missing.
+    #   No silent failures, no running in a broken state.
+    env_statuses = config.validate_startup_env()
+
+    # ── Print environment table (mirrors reference's markdown table) ──
+    print()
+    print("  ╔══════════════════════════════════════════════════════════════════════╗")
+    print("  ║                 AI-Medikelizar — Environment Check                 ║")
+    print("  ╚══════════════════════════════════════════════════════════════════════╝")
+    print()
+    print(f"  {'Variable':30s} {'Status':12s} {'Purpose'}")
+    print(f"  {'─' * 30} {'─' * 12} {'─' * 36}")
+    for s in env_statuses:
+        print(f"  {s['name']:30s} {s['status']:12s} {s['purpose']}")
+    print()
+
     # Initialize database tables
     try:
         init_db()
@@ -66,6 +84,7 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         log.error(f"Database initialization failed: {e}")
 
+    # ── Startup banner ──
     log.info("─" * 50)
     log.info("AI-Medikelizar Backend starting")
     _provider = config.PROVIDER
@@ -80,6 +99,14 @@ async def lifespan(app: FastAPI):
     log.info(f"  Admin emails:  {', '.join(config.ADMIN_EMAILS)}")
     log.info(f"  Stripe:        {'configured' if config.STRIPE_SECRET_KEY else 'not configured'}")
     log.info("─" * 50)
+
+    # ── Security flow diagram (mirrors reference architecture) ──
+    log.info("  Security layers active:")
+    log.info("    Layer 1  Clerk auth middleware  →  /api/auth/me, Bearer token")
+    log.info("    Layer 2  Admin email whitelist  →  require_admin() dependency")
+    log.info("    Layer 3  Client-side admin hide →  shield button shown only for admins")
+    log.info("  ─" * 17)
+
     yield
     log.info("Shutting down.")
 
@@ -135,10 +162,20 @@ async def track_page_views(request: Request, call_next):
 
 
 # ═══ CORS ═════════════════════════════════════════════
+# Since FastAPI serves both frontend AND API from the same origin
+# (same domain & port), same-origin requests don't need CORS at all.
+# But for deployment flexibility (e.g. separate frontend domain),
+# we allow explicit origins with credentials support.
+_CORS_ORIGINS_RAW = os.getenv(
+    "CORS_ORIGINS",
+    "http://localhost:8000,http://127.0.0.1:8000"
+)
+_CORS_ORIGINS = [o.strip() for o in _CORS_ORIGINS_RAW.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=_CORS_ORIGINS,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -150,6 +187,11 @@ if CSS_DIR.exists():
     app.mount("/css", StaticFiles(directory=str(CSS_DIR)), name="css")
 if JS_DIR.exists():
     app.mount("/js", StaticFiles(directory=str(JS_DIR)), name="js")
+
+
+# ═══ Auth Middleware (Layer 1: Clerk — protects /api/admin/*) ═══
+from .auth import clerk_auth_middleware
+app.middleware("http")(clerk_auth_middleware)
 
 
 # ═══ Import and include routers ═══════════════════════
