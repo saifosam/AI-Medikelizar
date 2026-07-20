@@ -283,6 +283,13 @@ async def get_current_user(request: Request, db: Session = Depends(get_db)) -> O
         return db.query(UserModel).filter(
             UserModel.clerk_id == clerk_user_id
         ).first()
+    except Exception as e:
+        # DB might be read-only (e.g. Vercel serverless with SQLite).
+        # Return the in-memory user object without persisting — the user
+        # can still be authenticated and their is_admin status is correct.
+        db.rollback()
+        log.info(f"Returning in-memory user (DB write failed: {e}): {email} (admin={is_admin})")
+        return user
 
 
 def _extract_clerk_user_id(token: str) -> Optional[str]:
