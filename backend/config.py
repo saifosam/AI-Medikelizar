@@ -84,11 +84,13 @@ def require_env(name: str) -> str:
 # vs OPTIONAL (nice to have, fallback or degraded mode).
 
 CRITICAL_ENV_VARS: dict[str, str] = {
-    # Clerk authentication
-    "CLERK_SECRET_KEY": "Clerk API secret for session verification",
+    # (none required — app can run without Clerk)
 }
 
 OPTIONAL_ENV_VARS: dict[str, str] = {
+    # Clerk authentication (optional — app works without it, just no auth)
+    "CLERK_SECRET_KEY": "Clerk API secret for session verification",
+
     # AI Providers
     "AI_PROVIDER": "Active AI provider (ollama, google, groq, openrouter)",
     "GOOGLE_API_KEY": "Google Gemini API key",
@@ -229,9 +231,9 @@ STRIPE_VIP_PRICE_ID     = _env("STRIPE_VIP_PRICE_ID", "")
 # ══════════════════════════════════════════════════════
 # Clerk
 # ══════════════════════════════════════════════════════
-# CRITICAL: require_env() crashes at module import time if missing.
-# Mirrors reference: PAYMOB_SECRET_KEY = requireEnv("PAYMOB_SECRET_KEY")
-CLERK_SECRET_KEY = require_env("CLERK_SECRET_KEY")
+# Optional — use _env() so the server can start without Clerk configured.
+# On Vercel, Clerk env vars aren't present; auth endpoints return 401.
+CLERK_SECRET_KEY = _env("CLERK_SECRET_KEY", "")
 
 CLERK_WEBHOOK_SECRET = _env("CLERK_WEBHOOK_SECRET", "")
 
