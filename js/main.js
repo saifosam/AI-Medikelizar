@@ -1295,12 +1295,8 @@
     const footerYear = document.getElementById("footer-year");
     if (footerYear) footerYear.textContent = new Date().getFullYear();
 
-    // ── Log active AI provider from config ──
-    if (typeof AI_CONFIG !== "undefined") {
-      const p = AI_CONFIG.provider;
-      const m = (AI_CONFIG[p] && AI_CONFIG[p].model) || "N/A";
-      console.log(`Active provider: ${p} · Model: ${m}`);
-    }
+    // ── Note: AI provider & model are configured in .env (backend side) ──
+    //    The backend logs them on startup; see .env.example for options.
 
     // ── Theme initialisation ──
     const currentTheme = resolveTheme();

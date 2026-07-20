@@ -756,9 +756,7 @@
     // Fallback if config.js doesn't exist yet (fresh clone, .gitignored)
     if (typeof AI_CONFIG === "undefined") {
       var AI_CONFIG = {
-        provider: "openai",
-        openai: { apiKey: "", model: "gpt-4o-mini", endpoint: "https://api.openai.com/v1" },
-        ollama: { baseUrl: "http://localhost:11434", model: "llama3.2" },
+        clerk: { publishableKey: "" },
         retrieval: { maxSources: 8, minRelevance: 0.7, cacheResults: true },
         systemPrompt: ""
       };

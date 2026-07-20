@@ -1,10 +1,13 @@
 """
 AI-Medikelizar — Configuration Module
 =======================================
-Reads settings from app.py (the single source of truth) and allows
-individual overrides via environment variables (useful for secrets).
+Reads settings from environment variables (with hardcoded fallbacks).
 
-Priority:  .env / env vars  >  app.py defaults
+The single source of truth for provider and model configuration is
+.env (or .env.example for reference). Copy .env.example to .env and
+edit it — that's the only file you need to touch.
+
+Priority:  .env / env vars  >  hardcoded defaults below
 """
 
 import os
@@ -26,7 +29,7 @@ PROJECT_ENV_PATH = BACKEND_DIR.parent / ".env"
 if PROJECT_ENV_PATH.exists():
     load_dotenv(PROJECT_ENV_PATH, override=True)
 
-# Helper: env var > app.py default
+# Helper: env var > fallback
 def _env(key: str, fallback):
     """Return env var if set, else fallback value."""
     return os.getenv(key, fallback)
@@ -34,26 +37,28 @@ def _env(key: str, fallback):
 # ══════════════════════════════════════════════════════
 # Active Provider
 # ══════════════════════════════════════════════════════
-PROVIDER = os.getenv("AI_PROVIDER", app_config.AI_PROVIDER)
+# Configured ONLY via .env — edit .env to change.
+# See .env.example for all options.
+PROVIDER = os.getenv("AI_PROVIDER", "ollama")
 
 # ══════════════════════════════════════════════════════
 # Google Gemini
 # ══════════════════════════════════════════════════════
-GOOGLE_API_KEY = _env("GOOGLE_API_KEY", app_config.AI_GOOGLE_API_KEY)
-GOOGLE_MODEL   = _env("GOOGLE_MODEL",   app_config.AI_GOOGLE_MODEL)
+GOOGLE_API_KEY = _env("GOOGLE_API_KEY", "")
+GOOGLE_MODEL   = _env("GOOGLE_MODEL",   "gemini-2.0-flash-lite")
 
 # ══════════════════════════════════════════════════════
 # OpenRouter
 # ══════════════════════════════════════════════════════
-OPENROUTER_API_KEY   = _env("OPENROUTER_API_KEY",   app_config.AI_OPENROUTER_API_KEY)
-OPENROUTER_MODEL     = _env("OPENROUTER_MODEL",     app_config.AI_OPENROUTER_MODEL)
-OPENROUTER_BASE_URL  = _env("OPENROUTER_BASE_URL",  app_config.AI_OPENROUTER_BASE_URL)
+OPENROUTER_API_KEY   = _env("OPENROUTER_API_KEY",   "")
+OPENROUTER_MODEL     = _env("OPENROUTER_MODEL",     "gpt-4o-mini")
+OPENROUTER_BASE_URL  = _env("OPENROUTER_BASE_URL",  "https://openrouter.ai/api/v1")
 
 # ══════════════════════════════════════════════════════
 # Ollama (local)
 # ══════════════════════════════════════════════════════
-OLLAMA_MODEL     = _env("OLLAMA_MODEL",     app_config.AI_OLLAMA_MODEL)
-OLLAMA_BASE_URL  = _env("OLLAMA_BASE_URL",  app_config.AI_OLLAMA_BASE_URL)
+OLLAMA_MODEL     = _env("OLLAMA_MODEL",     "qwen2.5-coder:7b")
+OLLAMA_BASE_URL  = _env("OLLAMA_BASE_URL",  "http://localhost:11434")
 
 # ══════════════════════════════════════════════════════
 # PubMed E-utilities

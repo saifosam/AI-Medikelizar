@@ -1,38 +1,13 @@
 """
 AI-Medikelizar — App Configuration
 ===================================
-All settings in one place. Edit this file directly to configure the app.
+Non-sensitive app behaviour settings. Everything related to the AI
+provider (which provider, which model, API keys, base URLs) is
+configured exclusively in .env — see .env.example for the full list.
 
-API keys should still be set via .env for security (they'll override
-the empty strings here).
-
-Provider options: google | openrouter | ollama
+⚠️  To change the AI provider or model, edit .env, NOT this file.
+    Copy .env.example (from the project root) to .env and edit it.
 """
-
-# ═══════════════════════════════════════════════════════════
-# Active Provider
-# ═══════════════════════════════════════════════════════════
-# Choose one: "google" | "openrouter" | "ollama"
-AI_PROVIDER = "ollama"
-
-# ═══════════════════════════════════════════════════════════
-# Google Gemini
-# ═══════════════════════════════════════════════════════════
-AI_GOOGLE_API_KEY = ""                  # Or set env: GOOGLE_API_KEY
-AI_GOOGLE_MODEL   = "gemini-2.0-flash-lite"
-
-# ═══════════════════════════════════════════════════════════
-# OpenRouter (OpenAI-compatible proxy)
-# ═══════════════════════════════════════════════════════════
-AI_OPENROUTER_API_KEY    = ""           # Or set env: OPENROUTER_API_KEY
-AI_OPENROUTER_MODEL      = "gpt-4o-mini"
-AI_OPENROUTER_BASE_URL   = "https://openrouter.ai/api/v1"
-
-# ═══════════════════════════════════════════════════════════
-# Ollama (local)
-# ═══════════════════════════════════════════════════════════
-AI_OLLAMA_MODEL     = "qwen2.5-coder:7b"
-AI_OLLAMA_BASE_URL  = "http://localhost:11434"
 
 # ═══════════════════════════════════════════════════════════
 # PubMed E-utilities
