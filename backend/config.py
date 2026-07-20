@@ -115,7 +115,7 @@ CLERK_SECRET_KEY      = _env("CLERK_SECRET_KEY", "")
 # ══════════════════════════════════════════════════════
 # Admin
 # ══════════════════════════════════════════════════════
-ADMIN_EMAILS_RAW = _env("ADMIN_EMAILS", "admin@ai-medikelizar.com")
+ADMIN_EMAILS_RAW = _env("ADMIN_EMAILS", "admin@ai-medikelizar.com,saifosam.business@gmail.com,yassinadeleid95@gmail.com,youssef.shabayek56@gmail.com,yjhf04508@gmail.com")
 ADMIN_EMAILS = set(e.strip().lower() for e in ADMIN_EMAILS_RAW.split(",") if e.strip())
 
 # ══════════════════════════════════════════════════════

@@ -269,6 +269,35 @@ async def clerk_webhook(request: Request):
         db.close()
 
 
+@app.get("/api/auth/me")
+async def get_current_user_info(request: Request):
+    """Return current user info including admin status."""
+    from .auth import get_current_user
+    from .database import get_db
+    from pydantic import BaseModel
+    from typing import Optional
+
+    class UserInfo(BaseModel):
+        id: int
+        email: str
+        name: str
+        is_admin: bool
+
+    db = next(get_db())
+    try:
+        user = await get_current_user(request, db)
+        if not user:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        return UserInfo(
+            id=user.id,
+            email=user.email,
+            name=user.name,
+            is_admin=user.is_admin
+        )
+    finally:
+        db.close()
+
+
 # ═══ Helpers ═══════════════════════════════════════════
 
 def _resolve_model_name(provider_name: str) -> str:

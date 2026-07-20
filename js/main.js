@@ -1274,16 +1274,89 @@
     adminRefreshBtn.addEventListener("click", loadAdminDashboard);
   }
 
-  // Admin shield button is always visible in the header
+  /* ─── Admin check ─── */
+  let isAdmin = false;
+
+  /** Build Clerk user headers so the backend can create users on-the-fly */
+  function clerkUserHeaders() {
+    const h = {};
+    if (window.Clerk && Clerk.user) {
+      h["X-Clerk-User-Email"] = Clerk.user.primaryEmailAddress?.emailAddress || "";
+      h["X-Clerk-User-Name"]  = Clerk.user.fullName || "";
+    }
+    return h;
+  }
+
+  async function checkAdminStatus() {
+    try {
+      const resp = await fetch(`${API_BASE}/api/auth/me`, {
+        credentials: "include",
+        headers: clerkUserHeaders(),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        isAdmin = data.is_admin === true;
+        const adminBtn = document.getElementById("admin-shield-btn");
+        if (adminBtn) {
+          adminBtn.style.display = isAdmin ? "flex" : "none";
+        }
+        // If currently on admin page but not admin, redirect home
+        if (!isAdmin && window.location.hash === "#admin") {
+          window.location.hash = "#home";
+        }
+      } else {
+        const adminBtn = document.getElementById("admin-shield-btn");
+        if (adminBtn) adminBtn.style.display = "none";
+      }
+    } catch (e) {
+      console.debug("Could not check admin status:", e.message);
+      const adminBtn = document.getElementById("admin-shield-btn");
+      if (adminBtn) adminBtn.style.display = "none";
+    }
+  }
+
+  function waitForClerkAndCheckAdmin() {
+    const check = () => {
+      if (window.Clerk && Clerk.isSignedIn) {
+        checkAdminStatus();
+      } else {
+        setTimeout(check, 100);
+      }
+    };
+    check();
+  }
 
   /* ─── Route hook: init data on view changes ─── */
   const origShowView = showView;
-  showView = function (viewId) {
+  showView = async function (viewId) {
     origShowView(viewId);
 
     if (viewId === "pricing") {
       loadPricing();
     } else if (viewId === "admin") {
+      if (!isAdmin) {
+        window.location.hash = "#home";
+        return;
+      }
+      // Double-check with server
+      try {
+        const resp = await fetch(`${API_BASE}/api/auth/me`, {
+          credentials: "include",
+          headers: clerkUserHeaders(),
+        });
+        if (!resp.ok) {
+          window.location.hash = "#home";
+          return;
+        }
+        const data = await resp.json();
+        if (!data.is_admin) {
+          window.location.hash = "#home";
+          return;
+        }
+      } catch (e) {
+        window.location.hash = "#home";
+        return;
+      }
       loadAdminDashboard();
     }
 
@@ -1322,6 +1395,9 @@
         document.documentElement.classList.add("theme-ready");
       });
     });
+
+    // Check admin status after Clerk auth is ready
+    waitForClerkAndCheckAdmin();
 
     // Initial route based on URL hash or default to home
     const hash = window.location.hash || "#home";

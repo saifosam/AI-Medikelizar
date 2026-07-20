@@ -26,6 +26,7 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import Depends, HTTPException, Request, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from . import config
@@ -202,7 +203,15 @@ async def get_current_user(request: Request, db: Session = Depends(get_db)) -> O
     Resolve the current user from the request.
 
     Reads the Clerk session token from the Authorization header or
-    __session cookie, then looks up the local user.
+    __session cookie, extracts the Clerk user ID from the JWT, then
+    looks up the local user. If the user doesn't exist in the local DB
+    (e.g. because the Clerk webhook hasn't fired yet), it creates the
+    user on-the-fly using the email/name provided by the frontend in
+    custom headers (X-Clerk-User-Email, X-Clerk-User-Name).
+
+    This on-the-fly creation eliminates the dependency on Clerk webhooks
+    being configured — as long as the user is signed in on the frontend,
+    their local record is created automatically.
 
     In development mode, we extract the Clerk user ID from the JWT
     payload (without full signature verification — the JWT is signed
@@ -211,7 +220,7 @@ async def get_current_user(request: Request, db: Session = Depends(get_db)) -> O
     In production, verify the JWT against Clerk's JWKS endpoint using:
       curl https://{clerk_domain}/.well-known/jwks.json
 
-    Returns None if the user is not authenticated or not found locally.
+    Returns None if the user is not authenticated.
     """
     # Clerk frontend SDK sets this header on fetch requests
     auth_header = request.headers.get("Authorization", "")
@@ -233,9 +242,46 @@ async def get_current_user(request: Request, db: Session = Depends(get_db)) -> O
         return None
 
     # Look up the local user by Clerk ID
-    return db.query(UserModel).filter(
+    user = db.query(UserModel).filter(
         UserModel.clerk_id == clerk_user_id
     ).first()
+
+    if user:
+        return user
+
+    # ── User not found in DB — create on-the-fly from headers ──
+    # The frontend sends Clerk user info as custom headers so we
+    # don't need a Clerk webhook to pre-sync users.
+    email = request.headers.get("X-Clerk-User-Email", "").strip().lower()
+    name = request.headers.get("X-Clerk-User-Name", "").strip()
+
+    if not email:
+        log.warning(f"Clerk user {clerk_user_id} not in DB and no email header provided — cannot create")
+        return None
+
+    is_admin = email in config.ADMIN_EMAILS
+
+    user = UserModel(
+        clerk_id=clerk_user_id,
+        email=email,
+        name=name,
+        is_admin=is_admin,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+    )
+    try:
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        log.info(f"Created user on-the-fly: {email} (admin={is_admin})")
+        return user
+    except IntegrityError:
+        db.rollback()
+        # Another concurrent request created this user between our
+        # query and insert — just return the now-existing record
+        return db.query(UserModel).filter(
+            UserModel.clerk_id == clerk_user_id
+        ).first()
 
 
 def _extract_clerk_user_id(token: str) -> Optional[str]:
