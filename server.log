@@ -1,0 +1,17 @@
+INFO:     Will watch for changes in these directories: ['C:\\Users\\user\\Documents\\Projects\\Programming\\AI-Medikelizar']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [24644] using StatReload
+INFO:     Started server process [18640]
+INFO:     Waiting for application startup.
+2026-07-20 04:34:28,285  INFO      Database tables created/verified
+2026-07-20 04:34:28,286  INFO      \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+2026-07-20 04:34:28,286  INFO      AI-Medikelizar Backend starting
+2026-07-20 04:34:28,286  INFO        Provider:      google
+2026-07-20 04:34:28,286  INFO        Model:         gemini-2.0-flash-lite
+2026-07-20 04:34:28,286  INFO        Confidence:    medium (default)
+2026-07-20 04:34:28,286  INFO        PubMed:        no API key (3 req/s)
+2026-07-20 04:34:28,286  INFO        Rate limit:    enabled
+2026-07-20 04:34:28,286  INFO        Admin emails:  admin@ai-medikelizar.com
+2026-07-20 04:34:28,286  INFO        Stripe:        not configured
+2026-07-20 04:34:28,286  INFO      \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+INFO:     Application startup complete.

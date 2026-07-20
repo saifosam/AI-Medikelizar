@@ -223,6 +223,71 @@ class GoogleProvider(BaseProvider):
             raise AIProviderError(f"Unexpected Google response: {data}")
 
 
+# ── Groq (free, no credit card needed) ──────────────────
+
+class GroqProvider(BaseProvider):
+    """Groq — free fast inference, OpenAI-compatible API.
+
+    Get a free API key at https://console.groq.com
+    No credit card required. Rate limits: ~30 RPM, 14,400 RPD.
+    """
+    def __init__(self):
+        if not config.GROQ_API_KEY:
+            raise AIProviderError(
+                "Groq API key is not configured. "
+                "Set GROQ_API_KEY in .env or environment. "
+                "Get a free key at https://console.groq.com"
+            )
+        self.base_url = config.GROQ_BASE_URL.rstrip("/")
+
+    @property
+    def name(self) -> str:
+        return "groq"
+
+    @property
+    def model_name(self) -> str:
+        return config.GROQ_MODEL
+
+    async def complete(self, prompt: str, system_prompt: str) -> str:
+        endpoint = f"{self.base_url}/chat/completions"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {config.GROQ_API_KEY}",
+        }
+        body = {
+            "model": config.GROQ_MODEL,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": 0.3,
+            "max_tokens": 2048,
+        }
+
+        async with httpx.AsyncClient(timeout=60) as client:
+            try:
+                resp = await client.post(endpoint, json=body, headers=headers)
+                resp.raise_for_status()
+                data = resp.json()
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 429:
+                    raise AIProviderError(
+                        "Groq rate limit exceeded. Free tier: ~30 RPM. "
+                        "Wait a moment and try again."
+                    )
+                raise AIProviderError(f"Groq API error: {e}")
+            except httpx.ConnectError as e:
+                raise AIProviderError(
+                    f"Cannot connect to Groq at {self.base_url}. "
+                    f"Details: {e}"
+                )
+
+        try:
+            return data["choices"][0]["message"]["content"]
+        except (KeyError, IndexError):
+            raise AIProviderError(f"Unexpected Groq response: {data}")
+
+
 # ── OpenRouter (OpenAI-compatible proxy) ───────────────
 
 class OpenRouterProvider(BaseProvider):
@@ -328,6 +393,7 @@ _PROVIDERS = {
     "ollama": OllamaProvider,
     "anthropic": AnthropicProvider,
     "google": GoogleProvider,
+    "groq": GroqProvider,
     "openrouter": OpenRouterProvider,
     "custom": CustomProvider,
 }

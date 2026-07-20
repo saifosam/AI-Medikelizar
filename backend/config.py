@@ -48,6 +48,13 @@ GOOGLE_API_KEY = _env("GOOGLE_API_KEY", "")
 GOOGLE_MODEL   = _env("GOOGLE_MODEL",   "gemini-2.0-flash-lite")
 
 # ══════════════════════════════════════════════════════
+# Groq (free, no credit card needed)
+# ══════════════════════════════════════════════════════
+GROQ_API_KEY   = _env("GROQ_API_KEY",   "")
+GROQ_MODEL     = _env("GROQ_MODEL",     "llama-3.1-8b-instant")
+GROQ_BASE_URL  = _env("GROQ_BASE_URL",  "https://api.groq.com/openai/v1")
+
+# ══════════════════════════════════════════════════════
 # OpenRouter
 # ══════════════════════════════════════════════════════
 OPENROUTER_API_KEY   = _env("OPENROUTER_API_KEY",   "")

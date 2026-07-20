@@ -10,7 +10,7 @@ Override with the DATABASE_URL environment variable.
 import os
 from pathlib import Path
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import sessionmaker
 
 BACKEND_DIR = Path(__file__).resolve().parent
 DEFAULT_DB_PATH = BACKEND_DIR / "ai_medikelizar.db"
@@ -26,8 +26,6 @@ engine = create_engine(
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-Base = declarative_base()
-
 
 def get_db():
     """FastAPI dependency that yields a database session."""
@@ -40,5 +38,5 @@ def get_db():
 
 def init_db():
     """Create all tables. Call on app startup."""
-    from .models import UserModel, SubscriptionModel, QueryLogModel, PageViewModel  # noqa
-    Base.metadata.create_all(bind=engine)
+    from .models import UserModel, SubscriptionModel, QueryLogModel, PageViewModel, SA_Base  # noqa
+    SA_Base.metadata.create_all(bind=engine)

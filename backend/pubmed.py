@@ -108,21 +108,25 @@ def _build_search_term(query: str) -> str:
 
     Strips stopwords, adds field qualifiers for best results.
     """
-    # Simple heuristic: use the query as-is but wrap in quotes for phrases
-    # and add date filter for recent results
+    # Strip punctuation and split into words
     clean = re.sub(r"[^\w\s]", " ", query).strip()
     words = clean.split()
 
-    # If query is long, treat it as a broad search
-    if len(words) > 8:
-        # Take key terms (skip very common words)
-        stopwords = {"what", "is", "the", "are", "of", "in", "for", "to",
-                     "and", "with", "from", "does", "how", "can", "a", "an",
-                     "do", "or", "by", "on", "at", "be", "this", "that"}
-        key_terms = [w for w in words if w.lower() not in stopwords]
-        term = " AND ".join(key_terms[:8])
-    else:
-        term = " AND ".join(words)
+    # Always filter out common stopwords — they ruin PubMed searches
+    stopwords = {"what", "is", "the", "are", "of", "in", "for", "to",
+                 "and", "with", "from", "does", "how", "can", "a", "an",
+                 "do", "or", "by", "on", "at", "be", "this", "that",
+                 "have", "has", "had", "was", "were", "been", "not",
+                 "but", "so", "if", "no", "just", "about", "up",
+                 "out", "all", "also", "very", "when", "who", "which"}
+    key_terms = [w for w in words if w.lower() not in stopwords]
+
+    # If all words were stopwords, fall back to the first original word
+    if not key_terms and words:
+        key_terms = words[:1]
+
+    # Limit to 8 terms max for best PubMed relevance
+    term = " AND ".join(key_terms[:8])
 
     # Add date range for recent evidence (last 10 years)
     term += ' AND ("2014"[Date - Publication] : "3000"[Date - Publication])'

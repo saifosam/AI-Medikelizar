@@ -68,8 +68,12 @@ async def lifespan(app: FastAPI):
 
     log.info("─" * 50)
     log.info("AI-Medikelizar Backend starting")
-    log.info(f"  Provider:      {config.PROVIDER}")
-    log.info(f"  Model:         {_resolve_model_name(config.PROVIDER)}")
+    _provider = config.PROVIDER
+    _key_attr = f"{_provider.upper()}_API_KEY"
+    _key_set = bool(getattr(config, _key_attr, ""))
+    log.info(f"  Provider:      {_provider}")
+    log.info(f"  Model:         {_resolve_model_name(_provider)}")
+    log.info(f"  API key:       {'set' if _key_set else 'NOT SET — will fail if not a local provider'}")
     log.info(f"  Confidence:    {config.DEFAULT_CONFIDENCE} (default)")
     log.info(f"  PubMed:        {'API key set' if config.PUBMED_API_KEY else 'no API key (3 req/s)'}")
     log.info(f"  Rate limit:    {'enabled' if config.RATE_LIMIT_ENABLED else 'disabled'}")
