@@ -1317,54 +1317,56 @@
     return h;
   }
 
+  /** Resolve admin status from Clerk user email (client-side fallback) */
+  function resolveAdminFromClient() {
+    if (window.Clerk && Clerk.user) {
+      const email = Clerk.user.primaryEmailAddress?.emailAddress || "";
+      return ADMIN_EMAILS.includes(email.toLowerCase());
+    }
+    return false;
+  }
+
+  /** Apply admin UI state: show/hide shield, redirect away if not admin */
+  function applyAdminUI(isAdminUser) {
+    isAdmin = isAdminUser;
+    const adminBtn = document.getElementById("admin-shield-btn");
+    if (adminBtn) {
+      adminBtn.style.display = isAdmin ? "flex" : "none";
+    }
+    if (!isAdmin && window.location.hash === "#admin") {
+      window.location.hash = "#home";
+    }
+  }
+
   async function checkAdminStatus() {
     try {
-      // ── Client-side fast check (Layer 3: email whitelist) ──
-      // If Clerk is loaded and the user's email is in the whitelist,
-      // show the shield immediately for zero-lag UX. The server will
-      // still double-check on any admin navigation.
-      if (window.Clerk && Clerk.user) {
-        const userEmail = Clerk.user.primaryEmailAddress?.emailAddress || "";
-        const emailIsAdmin = ADMIN_EMAILS.includes(userEmail.toLowerCase());
-        if (emailIsAdmin) {
-          const adminBtn = document.getElementById("admin-shield-btn");
-          if (adminBtn) {
-            adminBtn.style.display = "flex";
-          }
-          // Don't set isAdmin=true yet — wait for server confirmation
-        }
-      }
-
       // ── Server-side authoritative check (Layers 1 + 2) ──
+      // The server is the SOLE authority for admin status. We NEVER show
+      // the shield button before the server confirms. This prevents the
+      // "flash of button then disappear" bug on slow connections or Vercel
+      // cold starts.
       const headers = await getAuthHeaders();
       const resp = await fetch(`${API_BASE}/api/auth/me`, {
         credentials: "include",
         headers: headers,
+        // Add a generous timeout for Vercel cold starts
+        signal: AbortSignal.timeout(10000),
       });
+
       if (resp.ok) {
+        // Server says admin — authoritative
         const data = await resp.json();
-        isAdmin = data.is_admin === true;
-        const adminBtn = document.getElementById("admin-shield-btn");
-        if (adminBtn) {
-          adminBtn.style.display = isAdmin ? "flex" : "none";
-        }
-        // If currently on admin page but not admin, redirect home
-        if (!isAdmin && window.location.hash === "#admin") {
-          window.location.hash = "#home";
-        }
+        applyAdminUI(data.is_admin === true);
       } else {
-        // Server said no — hide the shield (overrides client-side check)
-        isAdmin = false;
-        const adminBtn = document.getElementById("admin-shield-btn");
-        if (adminBtn) adminBtn.style.display = "none";
-        if (window.location.hash === "#admin") {
-          window.location.hash = "#home";
-        }
+        // Server returned an error (e.g. 401, 500).
+        // Fall back to client-side email check as a best-effort guess.
+        console.warn("Admin server check returned", resp.status, "— falling back to client check");
+        applyAdminUI(resolveAdminFromClient());
       }
     } catch (e) {
-      console.debug("Could not check admin status:", e.message);
-      const adminBtn = document.getElementById("admin-shield-btn");
-      if (adminBtn) adminBtn.style.display = "none";
+      // Network error — server might be cold-starting. Fall back to client check.
+      console.debug("Admin server check failed — falling back to client check:", e.message);
+      applyAdminUI(resolveAdminFromClient());
     }
   }
 
