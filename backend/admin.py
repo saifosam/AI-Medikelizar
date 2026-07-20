@@ -38,6 +38,10 @@ def _fetch_clerk_users(limit: int = 100, offset: int = 0) -> Optional[dict]:
 
     Returns a dict with 'data' (list of users) and 'total_count',
     or None if Clerk is not configured or the API call fails.
+
+    Handles two response formats from Clerk:
+      - Object: {"data": [...], "total_count": N}
+      - Array:  [...] (direct JSON array — normalises to object format)
     """
     if not app_config.CLERK_SECRET_KEY:
         log.info("CLERK_SECRET_KEY not set — cannot fetch Clerk users")
@@ -51,7 +55,14 @@ def _fetch_clerk_users(limit: int = 100, offset: int = 0) -> Optional[dict]:
             timeout=10,
         )
         resp.raise_for_status()
-        return resp.json()
+        data = resp.json()
+
+        # Normalise: if Clerk returns a raw JSON array, wrap it
+        if isinstance(data, list):
+            total_count = int(resp.headers.get("x-total-count", resp.headers.get("clerk-total-count", len(data))))
+            return {"data": data, "total_count": total_count}
+
+        return data
     except requests.RequestException as e:
         log.warning(f"Failed to fetch Clerk users: {e}")
         return None
