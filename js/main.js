@@ -1340,6 +1340,11 @@
     if (!isAdmin && window.location.hash === "#admin") {
       window.location.hash = "#home";
     }
+    // If admin status just resolved and we're on the admin view (or still need to load it),
+    // re-trigger the admin view now that isAdmin is true
+    if (isAdmin && window.location.hash === "#admin") {
+      route("#admin");
+    }
   }
 
   async function checkAdminStatus() {
@@ -1394,7 +1399,16 @@
       loadPricing();
     } else if (viewId === "admin") {
       if (!isAdmin) {
-        window.location.hash = "#home";
+        // If Clerk has fully loaded and confirmed signed-in, server said not admin → safe redirect
+        if (window.Clerk && Clerk.isSignedIn) {
+          window.location.hash = "#home";
+          return;
+        }
+        // Clerk might still be loading — show a loading message and wait for applyAdminUI
+        const tbody = document.getElementById("admin-users-body");
+        if (tbody) {
+          tbody.innerHTML = '<tr><td colspan="6" class="admin-table-empty">Verifying admin access…</td></tr>';
+        }
         return;
       }
 
