@@ -86,6 +86,33 @@ CUSTOM_ENDPOINT    = _env("CUSTOM_ENDPOINT", "")
 CUSTOM_MODEL       = _env("CUSTOM_MODEL", "")
 
 # ══════════════════════════════════════════════════════
+# Stripe
+# ══════════════════════════════════════════════════════
+STRIPE_SECRET_KEY      = _env("STRIPE_SECRET_KEY", "")
+STRIPE_PUBLISHABLE_KEY = _env("STRIPE_PUBLISHABLE_KEY", "")
+STRIPE_WEBHOOK_SECRET  = _env("STRIPE_WEBHOOK_SECRET", "")
+STRIPE_PREMIUM_PRICE_ID = _env("STRIPE_PREMIUM_PRICE_ID", "")
+STRIPE_VIP_PRICE_ID     = _env("STRIPE_VIP_PRICE_ID", "")
+
+# ══════════════════════════════════════════════════════
+# Clerk
+# ══════════════════════════════════════════════════════
+CLERK_WEBHOOK_SECRET = _env("CLERK_WEBHOOK_SECRET", "")
+CLERK_SECRET_KEY      = _env("CLERK_SECRET_KEY", "")
+
+# ══════════════════════════════════════════════════════
+# Admin
+# ══════════════════════════════════════════════════════
+ADMIN_EMAILS_RAW = _env("ADMIN_EMAILS", "admin@ai-medikelizar.com")
+ADMIN_EMAILS = set(e.strip().lower() for e in ADMIN_EMAILS_RAW.split(",") if e.strip())
+
+# ══════════════════════════════════════════════════════
+# Rate Limiting
+# ══════════════════════════════════════════════════════
+RATE_LIMIT_ENABLED = _env("RATE_LIMIT_ENABLED", "true").lower() == "true"
+LOGIN_RATE_LIMIT   = _env("LOGIN_RATE_LIMIT", "10/minute")
+
+# ══════════════════════════════════════════════════════
 # System Prompt
 # ══════════════════════════════════════════════════════
 SYSTEM_PROMPT = _env("SYSTEM_PROMPT", app_config.SYSTEM_PROMPT)

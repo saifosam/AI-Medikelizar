@@ -76,6 +76,14 @@
         <!-- Clerk user button (shown when signed in) -->
         <div id="user-button" class="header-user-button"></div>
 
+        <!-- Admin shield button -->
+        <a href="#admin" class="admin-shield-btn" id="admin-shield-btn" data-nav aria-label="Admin dashboard" title="Admin dashboard">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            <path d="M9 12l2 2 4-4"></path>
+          </svg>
+        </a>
+
         <button class="theme-toggle" id="theme-toggle" aria-label="Switch to dark mode" title="Switch to dark mode">
           <!-- Moon icon (light mode → click to go dark) -->
           <svg class="moon-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -102,9 +110,10 @@
           </button>
           <ul class="nav-list">
             <li><a href="#home" class="nav-link active" data-nav>Query</a></li>
+            <li><a href="#pricing" class="nav-link" data-nav>Pricing</a></li>
             <li><a href="#trusted-sources" class="nav-link" data-nav>Sources</a></li>
             <li><a href="#about" class="nav-link" data-nav>About</a></li>
-          </ul>
+            </ul>
         </nav>
       </div>
     </div>
@@ -276,6 +285,32 @@
           <div class="source-cards" id="source-cards">
             <!-- Dynamically populated -->
           </div>
+        </div>
+
+        <!-- ──── CONVERSATION HISTORY (follow-up pairs) ──── -->
+        <div id="conversation-history" class="conversation-history">
+          <!-- Follow-up entries are appended here by JS -->
+        </div>
+
+        <!-- ──── FLOATING FOLLOW-UP BAR ──── -->
+        <div class="followup-bar" id="followup-bar" hidden>
+          <form id="followup-form" class="followup-form">
+            <label for="followup-input" class="sr-only">Ask a follow-up or start a new topic</label>
+            <input
+              type="search"
+              id="followup-input"
+              class="followup-input"
+              placeholder="Ask a follow-up or start a new topic…"
+              autocomplete="off"
+              spellcheck="true"
+            >
+            <button type="submit" class="followup-submit" aria-label="Submit follow-up">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
+            </button>
+          </form>
         </div>
       </div>
     </section>
@@ -503,6 +538,164 @@
       </div>
     </section>
 
+    <!-- ──── PRICING VIEW ──── -->
+    <section id="pricing" class="view" aria-label="Pricing page">
+      <div class="view-inner pricing-page">
+        <div class="pricing-header">
+          <h1 class="page-heading">Simple, transparent pricing</h1>
+          <p class="page-subheading">Choose the plan that fits your needs. All plans include access to evidence-based medical information from trusted sources. Upgrade anytime.</p>
+        </div>
+
+        <div class="pricing-toggle">
+          <span class="pricing-toggle-label pricing-toggle-label-active" id="pricing-period-monthly">Monthly</span>
+          <button class="pricing-toggle-btn" id="pricing-period-toggle" role="switch" aria-checked="false" aria-label="Toggle annual billing">
+            <span class="pricing-toggle-thumb"></span>
+          </button>
+          <span class="pricing-toggle-label" id="pricing-period-annual">Annual <span class="pricing-toggle-save">Save 20%</span></span>
+        </div>
+
+        <div class="pricing-grid" id="pricing-grid">
+          <!-- Dynamically populated from API -->
+        </div>
+
+        <div class="pricing-faq">
+          <h2 class="section-label">Frequently asked questions</h2>
+          <div class="faq-list">
+            <details class="faq-item">
+              <summary>Can I upgrade or downgrade my plan?</summary>
+              <p>Yes, you can upgrade or downgrade at any time. Changes take effect immediately. If you downgrade, the new limits apply at the start of your next billing cycle.</p>
+            </details>
+            <details class="faq-item">
+              <summary>What happens when I reach my daily query limit?</summary>
+              <p>If you reach your daily limit, you can upgrade to a higher tier for more queries, or wait until the next day when your quota resets.</p>
+            </details>
+            <details class="faq-item">
+              <summary>Can I cancel my subscription?</summary>
+              <p>Yes, you can cancel anytime through your account settings. Your access continues until the end of the current billing period.</p>
+            </details>
+            <details class="faq-item">
+              <summary>Is there a free trial for paid plans?</summary>
+              <p>Yes, all paid plans come with a 7-day free trial. You won't be charged until the trial period ends.</p>
+            </details>
+          </div>
+        </div>
+
+        <div class="pricing-current-plan" id="pricing-current-plan" hidden>
+          <div class="current-plan-card">
+            <h3>Your Current Plan</h3>
+            <p class="current-plan-name" id="current-plan-name">Basic</p>
+            <p class="current-plan-status" id="current-plan-status">Active</p>
+            <p class="current-plan-usage" id="current-plan-usage"></p>
+            <button class="btn btn-secondary" id="manage-subscription-btn">Manage Subscription</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ──── ADMIN VIEW (hidden from public nav) ──── -->
+    <section id="admin" class="view" aria-label="Admin dashboard">
+      <div class="view-inner admin-page">
+        <div class="admin-header">
+          <div>
+            <h1 class="page-heading">Admin Dashboard</h1>
+            <p class="page-subheading" id="admin-last-refresh"></p>
+          </div>
+          <button class="btn btn-secondary" id="admin-refresh-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+            </svg>
+            Refresh
+          </button>
+        </div>
+
+        <!-- Stats cards -->
+        <div class="admin-stats-grid" id="admin-stats-grid">
+          <div class="admin-stat-card">
+            <span class="admin-stat-label">Total Users</span>
+            <span class="admin-stat-value" id="stat-total-users">—</span>
+          </div>
+          <div class="admin-stat-card">
+            <span class="admin-stat-label">New Users (7d)</span>
+            <span class="admin-stat-value" id="stat-new-users">—</span>
+          </div>
+          <div class="admin-stat-card">
+            <span class="admin-stat-label">Total Queries</span>
+            <span class="admin-stat-value" id="stat-total-queries">—</span>
+          </div>
+          <div class="admin-stat-card">
+            <span class="admin-stat-label">Queries (7d)</span>
+            <span class="admin-stat-value" id="stat-queries-7d">—</span>
+          </div>
+          <div class="admin-stat-card">
+            <span class="admin-stat-label">Total Revenue</span>
+            <span class="admin-stat-value" id="stat-total-revenue">—</span>
+          </div>
+          <div class="admin-stat-card">
+            <span class="admin-stat-label">Revenue (7d)</span>
+            <span class="admin-stat-value" id="stat-revenue-7d">—</span>
+          </div>
+          <div class="admin-stat-card">
+            <span class="admin-stat-label">Active Subscriptions</span>
+            <span class="admin-stat-value" id="stat-active-subs">—</span>
+          </div>
+          <div class="admin-stat-card">
+            <span class="admin-stat-label">Users by Tier</span>
+            <span class="admin-stat-value admin-stat-value-sm" id="stat-users-by-tier">—</span>
+          </div>
+        </div>
+
+        <!-- Users table -->
+        <div class="admin-section">
+          <h2 class="section-label">Recent Users</h2>
+          <div class="admin-table-wrapper">
+            <table class="admin-table" id="admin-users-table">
+              <thead>
+                <tr>
+                  <th>Email</th>
+                  <th>Name</th>
+                  <th>Tier</th>
+                  <th>Status</th>
+                  <th>Admin</th>
+                  <th>Joined</th>
+                </tr>
+              </thead>
+              <tbody id="admin-users-body">
+                <tr><td colspan="6" class="admin-table-empty">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Subscription breakdown -->
+        <div class="admin-section">
+          <h2 class="section-label">Subscription Breakdown</h2>
+          <div class="admin-stats-grid" id="admin-tier-stats">
+            <div class="admin-stat-card">
+              <span class="admin-stat-label">Basic</span>
+              <span class="admin-stat-value" id="admin-tier-basic">—</span>
+              <span class="admin-stat-label" style="font-size:0.625rem;text-transform:none;letter-spacing:0;">Free tier · 5 queries/day</span>
+            </div>
+            <div class="admin-stat-card">
+              <span class="admin-stat-label">Premium</span>
+              <span class="admin-stat-value" id="admin-tier-premium">—</span>
+              <span class="admin-stat-label" style="font-size:0.625rem;text-transform:none;letter-spacing:0;">$9.99/mo · 50 queries/day</span>
+            </div>
+            <div class="admin-stat-card">
+              <span class="admin-stat-label">VIP</span>
+              <span class="admin-stat-value" id="admin-tier-vip">—</span>
+              <span class="admin-stat-label" style="font-size:0.625rem;text-transform:none;letter-spacing:0;">$29.99/mo · Unlimited queries</span>
+            </div>
+            <div class="admin-stat-card">
+              <span class="admin-stat-label">Monthly Revenue</span>
+              <span class="admin-stat-value" id="admin-monthly-revenue">—</span>
+              <span class="admin-stat-label" style="font-size:0.625rem;text-transform:none;letter-spacing:0;">Estimated MRR</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <!-- ════════════════ FOOTER ════════════════ -->
@@ -516,6 +709,7 @@
         <h3 class="footer-heading">Navigate</h3>
         <ul class="footer-links">
           <li><a href="#home" data-nav>Query</a></li>
+          <li><a href="#pricing" data-nav>Pricing</a></li>
           <li><a href="#trusted-sources" data-nav>Trusted sources</a></li>
           <li><a href="#about" data-nav>About</a></li>
         </ul>

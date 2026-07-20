@@ -11,6 +11,7 @@ Orchestrates the full retrieval-augmented generation flow:
 """
 
 import re
+import logging
 from datetime import datetime
 
 from . import config
@@ -18,14 +19,18 @@ from .models import SourceModel, QueryResponse
 from .pubmed import search_pubmed
 from .ai_providers import get_provider, AIProviderError
 
+log = logging.getLogger("ai-medikelizar.rag")
 
-async def run_pipeline(query: str, confidence: str = "medium") -> QueryResponse:
+
+async def run_pipeline(query: str, confidence: str = "medium", context: dict = None) -> QueryResponse:
     """
     Execute the full RAG pipeline.
 
     Args:
         query: The user's clinical question.
         confidence: Thoroughness level — "low" (fast), "medium" (balanced), "high" (thorough).
+        context: Optional dict with prior conversation context for follow-up queries.
+                 Keys: previousQuery, previousAnswer.
 
     Returns:
         QueryResponse with answer HTML and source citations.
@@ -37,9 +42,23 @@ async def run_pipeline(query: str, confidence: str = "medium") -> QueryResponse:
     max_sources = preset["max_sources"]
     temperature = preset["temperature"]
 
+    # ── Step 0.5: Rewrite follow-up query with context ──
+    search_query = query
+    if context and (context.get("previousQuery") or context.get("previousAnswer")):
+        try:
+            rewritten = await _rewrite_query(query, context)
+            if rewritten and rewritten.strip():
+                search_query = rewritten.strip()
+        except Exception as e:
+            log.warning(f"Query rewriting failed (falling back to original): {e}")
+    else:
+        log.info(f"No context — using original query: '{search_query[:100]}'")
+
+    log.info(f"Search query: '{search_query[:120]}'  sources={max_sources}")
+
     # ── Step 1: Retrieve sources from PubMed ──────────
     try:
-        raw_sources = await search_pubmed(query, max_results=max_sources)
+        raw_sources = await search_pubmed(search_query, retmax=max_sources)
     except Exception as e:
         # If PubMed fails, return an error message
         return _error_response(
@@ -50,6 +69,7 @@ async def run_pipeline(query: str, confidence: str = "medium") -> QueryResponse:
         )
 
     if not raw_sources:
+        log.warning(f"PubMed returned 0 results for: '{search_query[:120]}'")
         return _error_response(
             "No relevant sources could be found for your query. "
             "Try rephrasing your question or using broader medical terms.",
@@ -57,6 +77,8 @@ async def run_pipeline(query: str, confidence: str = "medium") -> QueryResponse:
             model="n/a",
             confidence=confidence,
         )
+
+    log.info(f"PubMed returned {len(raw_sources)} sources")
 
     # Convert to SourceModel instances
     sources = [SourceModel(**s) for s in raw_sources]
@@ -93,6 +115,68 @@ async def run_pipeline(query: str, confidence: str = "medium") -> QueryResponse:
         provider=provider.name,
         model=provider.model_name,
     )
+
+
+async def _rewrite_query(query: str, context: dict) -> str:
+    """
+    Use the AI provider to rewrite a follow-up query by resolving pronouns
+    and implicit references using prior conversation context.
+
+    Args:
+        query: The raw follow-up question (e.g. "what ages does it happen to").
+        context: Dict with previousQuery and/or previousAnswer.
+
+    Returns:
+        A self-contained search query (e.g. "diabetes insipidus age of onset").
+        If the follow-up appears to be a new unrelated topic, returns the
+        original query unchanged.
+    """
+    prev_query = (context.get("previousQuery") or "").strip()
+    prev_answer = (context.get("previousAnswer") or "").strip()
+
+    # Shorten the previous answer to just the first ~600 chars for context
+    if len(prev_answer) > 600:
+        prev_answer = prev_answer[:600] + "..."
+
+    rewrite_prompt = (
+        f"You are a medical query rewriter. Your job is to rewrite follow-up questions "
+        f"into self-contained PubMed search queries by resolving pronouns and implicit references.\n\n"
+        f"## Previous Query\n{prev_query}\n\n"
+        f"## Previous Answer (summary)\n{prev_answer}\n\n"
+        f"## Follow-up Question\n{query}\n\n"
+        f"## Instructions\n"
+        f"1. If the follow-up is a NEW unrelated topic, output the EXACT original query unchanged.\n"
+        f"2. If the follow-up clearly REFERENCES the previous topic, rewrite it into a concise, "
+        f"self-contained PubMed search query. Replace pronouns ('it', 'that', 'this condition', etc.) "
+        f"with the actual medical terms from the previous context.\n"
+        f"3. Output ONLY the rewritten query — no explanations, no quotation marks, no prefixes.\n"
+        f"4. Keep the output brief (under 15 words), suitable for PubMed search.\n"
+        f"5. Use standard medical terminology where possible.\n"
+    )
+
+    try:
+        provider = get_provider()
+        rewritten = await provider.complete(
+            rewrite_prompt,
+            "You are a precise query rewriter. Output only the rewritten query."
+        )
+        raw_response = rewritten
+        rewritten = rewritten.strip().strip('"').strip("'")
+
+        if not rewritten:
+            log.warning("Rewrite returned empty response, falling back to original")
+            return query
+
+        if len(rewritten) > 200:
+            log.warning(f"Rewrite too long ({len(rewritten)} chars), falling back. First 150 chars: {raw_response[:150]}")
+            return query
+
+        log.info(f"Rewrite OK: '{query[:60]}' => '{rewritten[:100]}'")
+        return rewritten
+
+    except Exception as e:
+        log.warning(f"Rewrite failed ({e}), falling back to original query")
+        return query
 
 
 def _build_prompt(query: str, sources: list[SourceModel], temperature: float = 0.3) -> str:

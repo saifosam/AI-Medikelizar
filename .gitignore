@@ -1,3 +1,7 @@
+# Windows junk
+nul
+NUL
+
 # Environment variables (contains API keys)
 .env
 .env.local
