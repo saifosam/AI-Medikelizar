@@ -1191,7 +1191,11 @@
   /* ─── Admin dashboard ─── */
   async function loadAdminDashboard() {
     try {
-      const resp = await fetch(`${API_BASE}/api/admin/dashboard`);
+      const headers = await getAuthHeaders();
+      const resp = await fetch(`${API_BASE}/api/admin/dashboard`, {
+        credentials: "include",
+        headers: headers,
+      });
       if (!resp.ok) {
         if (resp.status === 401 || resp.status === 403) {
           document.querySelector("#admin-users-body").innerHTML =
