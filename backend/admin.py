@@ -140,63 +140,76 @@ async def dashboard(db: Session = Depends(get_db)):
             QueryLogModel.created_at >= seven_days_ago
         ).scalar() or 0
 
-        # ── Subscription stats ──
-        active_subs = db.query(func.count(SubscriptionModel.id)).filter(
-            SubscriptionModel.status == "active",
-        ).scalar() or 0
-
+        # ── Subscription stats (wrap in try-except in case table doesn't exist) ──
+        active_subs = 0
         users_by_tier = {}
-        tier_counts = db.query(
-            SubscriptionModel.tier, func.count(SubscriptionModel.id)
-        ).filter(
-            SubscriptionModel.status == "active",
-        ).group_by(SubscriptionModel.tier).all()
-        for tier, count in tier_counts:
-            users_by_tier[tier] = count
-
-        # ── Revenue (estimated from active subscriptions) ──
+        tier_counts = []
         total_revenue_cents = 0
         revenue_7d_cents = 0
         revenue_by_tier = {}
+        try:
+            active_subs = db.query(func.count(SubscriptionModel.id)).filter(
+                SubscriptionModel.status == "active",
+            ).scalar() or 0
 
-        for tier, count in tier_counts:
-            if tier == "premium":
-                price = app_config.PAYMOB_PREMIUM_PRICE_CENTS
-            elif tier == "vip":
-                price = app_config.PAYMOB_VIP_PRICE_CENTS
-            else:
-                price = 0
-            revenue_by_tier[tier] = count * price
-            total_revenue_cents += count * price
+            tier_counts = db.query(
+                SubscriptionModel.tier, func.count(SubscriptionModel.id)
+            ).filter(
+                SubscriptionModel.status == "active",
+            ).group_by(SubscriptionModel.tier).all()
+            for tier, count in tier_counts:
+                users_by_tier[tier] = count
 
-        recent_subs = db.query(SubscriptionModel).filter(
-            SubscriptionModel.created_at >= seven_days_ago
-        ).all()
-        for sub in recent_subs:
-            if sub.tier == "premium":
-                revenue_7d_cents += app_config.PAYMOB_PREMIUM_PRICE_CENTS
-            elif sub.tier == "vip":
-                revenue_7d_cents += app_config.PAYMOB_VIP_PRICE_CENTS
+            for tier, count in tier_counts:
+                if tier == "premium":
+                    price = app_config.PAYMOB_PREMIUM_PRICE_CENTS
+                elif tier == "vip":
+                    price = app_config.PAYMOB_VIP_PRICE_CENTS
+                else:
+                    price = 0
+                revenue_by_tier[tier] = count * price
+                total_revenue_cents += count * price
+
+            recent_subs = db.query(SubscriptionModel).filter(
+                SubscriptionModel.created_at >= seven_days_ago
+            ).all()
+            for sub in recent_subs:
+                if sub.tier == "premium":
+                    revenue_7d_cents += app_config.PAYMOB_PREMIUM_PRICE_CENTS
+                elif sub.tier == "vip":
+                    revenue_7d_cents += app_config.PAYMOB_VIP_PRICE_CENTS
+        except Exception:
+            log.info("Subscription queries failed (table may not exist) — using defaults")
 
         # ── Recent users from local DB ──
-        recent_users_raw = db.query(UserModel).order_by(
-            UserModel.created_at.desc()
-        ).limit(20).all()
+        recent_users_raw = []
+        try:
+            recent_users_raw = db.query(UserModel).order_by(
+                UserModel.created_at.desc()
+            ).limit(20).all()
+        except Exception:
+            log.info("User query failed — no recent users available")
 
         recent_users = []
         for u in recent_users_raw:
-            sub = db.query(SubscriptionModel).filter(
-                SubscriptionModel.user_id == u.id,
-            ).order_by(SubscriptionModel.created_at.desc()).first()
+            # Look up subscription for this user (resilient to table issues)
+            sub = None
+            try:
+                sub = db.query(SubscriptionModel).filter(
+                    SubscriptionModel.user_id == u.id,
+                ).order_by(SubscriptionModel.created_at.desc()).first()
+            except Exception:
+                pass
+
             recent_users.append(UserOut(
-                id=u.id,
-                clerk_id=u.clerk_id,
-                email=u.email,
-                name=u.name,
-                is_admin=u.is_admin,
+                id=u.id or 0,
+                clerk_id=u.clerk_id or "",
+                email=u.email or "",
+                name=u.name or "",
+                is_admin=bool(u.is_admin),
                 tier=sub.tier if sub else "basic",
                 subscription_status=sub.status if sub else "",
-                created_at=u.created_at,
+                created_at=u.created_at or datetime.utcnow(),
             ))
 
         return {
