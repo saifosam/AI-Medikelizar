@@ -6,10 +6,8 @@ asgiref>=3.8.0     # Required by Vercel Python runtime for ASGI apps
 
 # ── Database ──
 sqlalchemy>=2.0.0
-alembic>=1.13.0
-
-# ── Payments ──
-stripe>=8.0.0
+alembic>=1.13.0# ── Payments (Paymob via REST API) ──
+requests>=2.31.0
 
 # ── Rate limiting ──
 slowapi>=0.1.9

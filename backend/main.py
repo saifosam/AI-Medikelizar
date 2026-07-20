@@ -10,9 +10,9 @@ Endpoints:
     POST /api/auth/webhook  — Clerk webhook (sync users)
     GET  /api/subscriptions/pricing       — Tier definitions
     GET  /api/subscriptions/status        — User's subscription status
-    POST /api/subscriptions/create-checkout    — Create Stripe Checkout
-    POST /api/subscriptions/create-portal-session — Customer portal
-    POST /api/subscriptions/webhook       — Stripe webhook
+    POST /api/subscriptions/create-checkout    — Create Paymob checkout session
+    POST /api/subscriptions/create-portal-session — Subscription management portal
+    POST /api/subscriptions/webhook       — Paymob webhook
     GET  /api/admin/dashboard — Admin dashboard stats
     GET  /api/admin/users    — List all users
 
@@ -97,7 +97,7 @@ async def lifespan(app: FastAPI):
     log.info(f"  PubMed:        {'API key set' if config.PUBMED_API_KEY else 'no API key (3 req/s)'}")
     log.info(f"  Rate limit:    {'enabled' if config.RATE_LIMIT_ENABLED else 'disabled'}")
     log.info(f"  Admin emails:  {', '.join(config.ADMIN_EMAILS)}")
-    log.info(f"  Stripe:        {'configured' if config.STRIPE_SECRET_KEY else 'not configured'}")
+    log.info(f"  Payments:      {'Paymob configured' if config.PAYMOB_API_KEY else 'not configured'}")
     log.info("─" * 50)
 
     # ── Security flow diagram (mirrors reference architecture) ──
@@ -360,7 +360,7 @@ if __name__ == "__main__":
     print(f"  |  Provider: {config.PROVIDER:<25s}|")
     model_name = _resolve_model_name(config.PROVIDER)
     print(f"  |  Model:    {model_name:<25s}|")
-    print(f"  |  Stripe:   {'configured' if config.STRIPE_SECRET_KEY else 'not configured':<21s}|")
+    print(f"  |  Payments: {'Paymob' if config.PAYMOB_API_KEY else 'not configured':<21s}|")
     print(f"  |  Admins:   {', '.join(config.ADMIN_EMAILS):<26s}|")
     print(f"  |  Press Ctrl+C to stop                        |")
     print(f"  +------------------------------------------------+")

@@ -39,15 +39,18 @@ class UserModel(SA_Base):
 
 
 class SubscriptionModel(SA_Base):
-    """User subscription record, synced from Stripe."""
+    """User subscription record, synced from Paymob payment events."""
     __tablename__ = "subscriptions"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     tier = Column(String(50), default="basic")       # basic | premium | vip
-    status = Column(String(50), default="active")     # active | cancelled | past_due | incomplete
-    stripe_customer_id = Column(String(255), default="")
-    stripe_subscription_id = Column(String(255), default="")
+    status = Column(String(50), default="active")     # active | cancelled | past_due
+    payment_method = Column(String(50), default="")   # card | wallet | installments
+    paymob_intention_id = Column(String(255), default="")
+    paymob_card_token = Column(String(255), default="")   # For recurring payments
+    paymob_order_id = Column(String(255), default="")
+    payment_type = Column(String(50), default="one_time") # one_time | recurring
     current_period_start = Column(DateTime, nullable=True)
     current_period_end = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

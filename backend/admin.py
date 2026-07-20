@@ -7,17 +7,16 @@ All routes are protected by the require_admin dependency.
 """
 
 import logging
-from datetime import datetime, date, timedelta
+from datetime import datetime, timedelta
 
-import stripe
 from fastapi import APIRouter, Depends
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from . import config
+from . import config as app_config
 from .auth import require_admin
 from .database import get_db
-from .models import UserModel, SubscriptionModel, QueryLogModel, PageViewModel, UserOut
+from .models import UserModel, SubscriptionModel, QueryLogModel, UserOut
 
 log = logging.getLogger("ai-medikelizar.admin")
 
@@ -29,11 +28,11 @@ async def dashboard(db: Session = Depends(get_db)):
     """
     Admin dashboard with aggregated stats.
 
-    Pulls:
+    Pulls from local database:
       - User counts (total, new in 7 days)
       - Query counts (total, in 7 days)
-      - Real revenue from Stripe API
       - Subscription counts by tier
+      - Revenue from completed subscriptions
       - Recent users list
     """
     now = datetime.utcnow()
@@ -66,42 +65,31 @@ async def dashboard(db: Session = Depends(get_db)):
     for tier, count in tier_counts:
         users_by_tier[tier] = count
 
-    # ── Revenue from Stripe API (real data, not mocked) ──
+    # ── Revenue from subscription payments (tracked locally) ──
+    # Revenue estimation based on active subscriptions × tier price
     total_revenue_cents = 0
     revenue_7d_cents = 0
     revenue_by_tier = {}
 
-    try:
-        # All-time revenue from paid invoices
-        seven_days_ago_ts = int((now - timedelta(days=7)).timestamp())
-        all_invoices = stripe.Invoice.list(
-            status="paid",
-            limit=100,
-            expand=["data.subscription"],
-        )
+    for tier, count in tier_counts:
+        if tier == "premium":
+            price = app_config.PAYMOB_PREMIUM_PRICE_CENTS
+        elif tier == "vip":
+            price = app_config.PAYMOB_VIP_PRICE_CENTS
+        else:
+            price = 0
+        revenue_by_tier[tier] = count * price
+        total_revenue_cents += count * price
 
-        for inv in all_invoices.auto_paging_iter():
-            amount = inv.get("amount_paid", 0) or 0
-            total_revenue_cents += amount
-
-            # Check if this invoice was created in the last 7 days
-            created = inv.get("created", 0)
-            if created >= seven_days_ago_ts:
-                revenue_7d_cents += amount
-
-            # Try to determine tier from subscription metadata
-            sub = inv.get("subscription")
-            tier = "basic"
-            if sub and hasattr(sub, "metadata"):
-                tier = sub.metadata.get("tier", "premium")
-            elif sub and isinstance(sub, str):
-                # String reference — try to fetch it
-                pass
-
-            revenue_by_tier[tier] = revenue_by_tier.get(tier, 0) + amount
-
-    except stripe.error.StripeError as e:
-        log.warning(f"Could not fetch Stripe revenue data: {e}")
+    # Recent subscriptions (7d) — approximate revenue
+    recent_subs = db.query(SubscriptionModel).filter(
+        SubscriptionModel.created_at >= seven_days_ago
+    ).all()
+    for sub in recent_subs:
+        if sub.tier == "premium":
+            revenue_7d_cents += app_config.PAYMOB_PREMIUM_PRICE_CENTS
+        elif sub.tier == "vip":
+            revenue_7d_cents += app_config.PAYMOB_VIP_PRICE_CENTS
 
     # ── Recent users ──
     recent_users_raw = db.query(UserModel).order_by(

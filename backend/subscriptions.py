@@ -1,27 +1,30 @@
 """
 AI-Medikelizar — Subscription System
 =====================================
-Stripe Checkout integration for subscription billing.
+Paymob payment gateway integration for subscription billing (Egypt/MENA).
 
 Tiers:
   - Basic  (free):      5 queries/day
-  - Premium ($9.99/mo): 50 queries/day, faster priority, detailed citations
-  - VIP    ($29.99/mo): unlimited queries, priority support, early access
+  - Premium (EGP/mo):   50 queries/day, faster priority, detailed citations
+  - VIP    (EGP/mo):    unlimited queries, priority support, early access
 
-Flow:
+Payment Flow:
   1. User clicks "Subscribe" on pricing page
   2. Frontend calls POST /api/subscriptions/create-checkout
-  3. Backend creates a Stripe Checkout Session, returns the URL
-  4. User completes payment on Stripe's hosted page
-  5. Stripe redirects back to our app
-  6. Stripe sends webhook events to sync subscription status
+  3. Backend creates a Paymob Payment Intention, returns the checkout URL
+  4. User completes payment on Paymob's hosted unified checkout page
+  5. Paymob redirects back to our app on success/cancellation
+  6. Paymob sends webhook events to sync subscription status
 """
 
+import hashlib
+import hmac
+import json
 import logging
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import Optional
 
-import stripe
+import requests
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
@@ -32,16 +35,15 @@ from .models import UserModel, SubscriptionModel, QueryLogModel
 
 log = logging.getLogger("ai-medikelizar.subscriptions")
 
-# ── Initialize Stripe ────────────────────────────────
-stripe.api_key = config.STRIPE_SECRET_KEY
+PAYMOB_BASE = "https://accept.paymob.com"
+
 
 # ── Subscription tier definitions ────────────────────
 TIERS = {
     "basic": {
         "label": "Basic",
-        "price_cents": 0,
+        "price_cents": 0,           # Free
         "queries_per_day": 5,
-        "stripe_price_id": "",  # Free tier — no Stripe price
         "features": [
             "5 queries per day",
             "Standard response speed",
@@ -51,9 +53,8 @@ TIERS = {
     },
     "premium": {
         "label": "Premium",
-        "price_cents": 999,  # $9.99
+        "price_cents": config.PAYMOB_PREMIUM_PRICE_CENTS,   # e.g. 2999 = 29.99 EGP
         "queries_per_day": 50,
-        "stripe_price_id": config.STRIPE_PREMIUM_PRICE_ID,
         "features": [
             "50 queries per day",
             "Faster response priority",
@@ -63,9 +64,8 @@ TIERS = {
     },
     "vip": {
         "label": "VIP",
-        "price_cents": 2999,  # $29.99
+        "price_cents": config.PAYMOB_VIP_PRICE_CENTS,       # e.g. 8999 = 89.99 EGP
         "queries_per_day": -1,  # unlimited
-        "stripe_price_id": config.STRIPE_VIP_PRICE_ID,
         "features": [
             "Unlimited queries",
             "Fastest response priority",
@@ -75,6 +75,176 @@ TIERS = {
         ],
     },
 }
+
+# ── Cache for Paymob auth token (valid 1 hour) ──────
+_paymob_token: str = ""
+_paymob_token_expiry: datetime = datetime.min
+
+
+# ═══════════════════════════════════════════════════════════
+# Paymob API Helpers
+# ═══════════════════════════════════════════════════════════
+
+
+def _get_paymob_token() -> str:
+    """Get an auth token from Paymob API (cached with expiry)."""
+    global _paymob_token, _paymob_token_expiry
+
+    if _paymob_token and datetime.utcnow() < _paymob_token_expiry:
+        return _paymob_token
+
+    if not config.PAYMOB_API_KEY:
+        log.warning("PAYMOB_API_KEY not configured")
+        return ""
+
+    try:
+        resp = requests.post(
+            f"{PAYMOB_BASE}/api/auth/tokens",
+            json={"api_key": config.PAYMOB_API_KEY},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        _paymob_token = data.get("token", "")
+        # Token expires in 1 hour — cache for 55 minutes
+        _paymob_token_expiry = datetime.utcnow() + timedelta(minutes=55)
+        return _paymob_token
+    except requests.RequestException as e:
+        log.error(f"Failed to get Paymob token: {e}")
+        return ""
+
+
+def create_payment_intention(
+    amount_cents: int,
+    currency: str,
+    user: UserModel,
+    tier: str,
+    base_url: str,
+) -> dict:
+    """
+    Create a Paymob Payment Intention and return the checkout details.
+
+    Returns: { "client_secret": "...", "id": 12345, "checkout_url": "..." }
+    Raises HTTPException on failure.
+    """
+    token = _get_paymob_token()
+    if not token:
+        raise HTTPException(status_code=500, detail="Payment service not configured")
+
+    # Build payment methods list from configured integration IDs
+    payment_methods = []
+    if config.PAYMOB_INTEGRATION_ID_CARDS:
+        try:
+            payment_methods.append(int(config.PAYMOB_INTEGRATION_ID_CARDS))
+        except ValueError:
+            pass
+    if config.PAYMOB_INTEGRATION_ID_WALLETS:
+        try:
+            payment_methods.append(int(config.PAYMOB_INTEGRATION_ID_WALLETS))
+        except ValueError:
+            pass
+
+    if not payment_methods:
+        raise HTTPException(
+            status_code=500,
+            detail="No payment methods configured. Set PAYMOB_INTEGRATION_ID env vars."
+        )
+
+    # Split user name into first/last
+    name_parts = (user.name or user.email).strip().split(" ", 1)
+    first_name = name_parts[0] if name_parts else "User"
+    last_name = name_parts[1] if len(name_parts) > 1 else ""
+
+    # Convert cents to EGP (Paymob accepts decimal amounts)
+    amount = amount_cents / 100.0
+
+    intention_data = {
+        "amount": amount,
+        "currency": currency,
+        "payment_methods": payment_methods,
+        "billing_data": {
+            "first_name": first_name,
+            "last_name": last_name,
+            "email": user.email,
+            "phone_number": "01000000000",
+            "apartment": "NA",
+            "floor": "NA",
+            "street": "NA",
+            "building": "NA",
+            "city": "NA",
+            "country": "EG",
+            "state": "NA",
+        },
+        "customer": {
+            "first_name": first_name,
+            "last_name": last_name,
+            "email": user.email,
+        },
+        "notification_url": f"{base_url}/api/subscriptions/webhook",
+        "redirection_url": f"{base_url}/#pricing?checkout=success",
+        "custom_data": {
+            "user_id": str(user.id),
+            "clerk_id": user.clerk_id,
+            "tier": tier,
+        },
+    }
+
+    try:
+        resp = requests.post(
+            f"{PAYMOB_BASE}/v1/intention/",
+            json=intention_data,
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        intention_id = data.get("id", "")
+        client_secret = data.get("client_secret", "")
+
+        # Build the unified checkout URL
+        checkout_url = (
+            f"{PAYMOB_BASE}/unifiedcheckout/"
+            f"?publicKey={config.PAYMOB_PUBLIC_KEY}"
+            f"&clientSecret={client_secret}"
+        )
+
+        return {
+            "id": intention_id,
+            "client_secret": client_secret,
+            "checkout_url": checkout_url,
+        }
+    except requests.RequestException as e:
+        log.error(f"Paymob intention creation failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create payment session")
+
+
+def verify_webhook_signature(payload: bytes, hmac_header: str) -> bool:
+    """
+    Verify Paymob webhook HMAC-SHA512 signature.
+
+    Paymob calculates the HMAC over the raw request body using the webhook secret.
+    """
+    if not config.PAYMOB_WEBHOOK_SECRET:
+        log.warning("PAYMOB_WEBHOOK_SECRET not set — skipping webhook verification")
+        return True
+
+    if not hmac_header:
+        log.warning("Paymob webhook: missing HMAC header")
+        return False
+
+    expected = hmac.new(
+        config.PAYMOB_WEBHOOK_SECRET.encode(),
+        payload,
+        hashlib.sha512,
+    ).hexdigest()
+
+    return hmac.compare_digest(expected, hmac_header)
+
+
+# ═══════════════════════════════════════════════════════════
+# Subscription Logic
+# ═══════════════════════════════════════════════════════════
 
 
 def get_tier_limits(tier: str) -> dict:
@@ -118,11 +288,20 @@ def check_query_limit(user: Optional[UserModel], db: Session) -> bool:
         return True
 
     if not user:
-        # Anonymous: enforce basic tier limit
-        return True  # Allow for now; track anonymously
+        return True  # Allow anonymous
 
     used = get_queries_used_today(user, db)
     return used < queries_per_day
+
+
+def get_user_payment_type(user: UserModel, db: Session) -> str:
+    """Check if user has a saved card token for recurring payments."""
+    sub = db.query(SubscriptionModel).filter(
+        SubscriptionModel.user_id == user.id,
+        SubscriptionModel.paymob_card_token != "",
+        SubscriptionModel.paymob_card_token.isnot(None),
+    ).first()
+    return "recurring" if sub else "one_time"
 
 
 # ═══════════════════════════════════════════════════════════
@@ -144,7 +323,7 @@ async def get_pricing():
             "queries_per_day": tier_info["queries_per_day"],
             "features": tier_info["features"],
         })
-    return {"tiers": tiers}
+    return {"tiers": tiers, "currency": "EGP"}
 
 
 @router.get("/status")
@@ -170,6 +349,8 @@ async def get_subscription_status(
     return {
         "tier": tier,
         "status": sub.status if sub else "active",
+        "payment_type": sub.payment_type if sub else "one_time",
+        "payment_method": sub.payment_method if sub else "",
         "current_period_end": sub.current_period_end.isoformat() if sub and sub.current_period_end else None,
         "queries_used_today": queries_used,
         "queries_limit": queries_limit,
@@ -183,7 +364,7 @@ async def create_checkout_session(
     db: Session = Depends(get_db),
 ):
     """
-    Create a Stripe Checkout Session for subscription purchase or upgrade.
+    Create a Paymob Payment Intention for subscription purchase.
 
     Expects JSON body: { "tier": "premium" | "vip" }
     """
@@ -194,52 +375,40 @@ async def create_checkout_session(
         raise HTTPException(status_code=400, detail="Invalid tier. Choose 'premium' or 'vip'.")
 
     tier_info = TIERS[tier]
-    price_id = tier_info["stripe_price_id"]
+    amount_cents = tier_info["price_cents"]
 
-    if not price_id:
-        raise HTTPException(status_code=400, detail=f"No Stripe price configured for tier '{tier}'.")
+    if amount_cents <= 0:
+        raise HTTPException(status_code=400, detail="Free tier cannot be purchased.")
 
-    # Get or create Stripe customer
-    existing_sub = db.query(SubscriptionModel).filter(
+    base_url = str(request.base_url).rstrip("/")
+
+    # Create Paymob payment intention
+    result = create_payment_intention(
+        amount_cents=amount_cents,
+        currency="EGP",
+        user=user,
+        tier=tier,
+        base_url=base_url,
+    )
+
+    # Save the intention ID to the subscription record
+    sub = db.query(SubscriptionModel).filter(
         SubscriptionModel.user_id == user.id,
     ).first()
+    if not sub:
+        sub = SubscriptionModel(user_id=user.id)
+        db.add(sub)
 
-    stripe_customer_id = existing_sub.stripe_customer_id if existing_sub else ""
+    sub.paymob_intention_id = str(result["id"])
+    sub.tier = tier
+    sub.status = "incomplete"
+    sub.payment_type = get_user_payment_type(user, db)
+    sub.updated_at = datetime.utcnow()
+    db.commit()
 
-    if not stripe_customer_id:
-        # Create a new Stripe customer
-        customer = stripe.Customer.create(
-            email=user.email,
-            name=user.name or user.email,
-            metadata={"clerk_user_id": user.clerk_id},
-        )
-        stripe_customer_id = customer.id
+    log.info(f"Checkout created for user {user.email}: {tier} ({amount_cents} EGP cents)")
 
-    # Determine success/cancel URLs
-    base_url = str(request.base_url).rstrip("/")
-    success_url = f"{base_url}/#pricing?checkout=success"
-    cancel_url = f"{base_url}/#pricing?checkout=cancelled"
-
-    try:
-        session = stripe.checkout.Session.create(
-            customer=stripe_customer_id,
-            mode="subscription",
-            line_items=[{"price": price_id, "quantity": 1}],
-            success_url=success_url,
-            cancel_url=cancel_url,
-            subscription_data={
-                "metadata": {
-                    "user_id": str(user.id),
-                    "clerk_user_id": user.clerk_id,
-                    "tier": tier,
-                },
-            },
-        )
-
-        return {"url": session.url}
-    except stripe.error.StripeError as e:
-        log.error(f"Stripe checkout error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to create checkout session")
+    return {"url": result["checkout_url"]}
 
 
 @router.post("/create-portal-session")
@@ -248,72 +417,49 @@ async def create_portal_session(
     user: UserModel = Depends(require_user),
     db: Session = Depends(get_db),
 ):
-    """Create a Stripe Customer Portal session for managing subscriptions."""
-    existing_sub = db.query(SubscriptionModel).filter(
-        SubscriptionModel.user_id == user.id,
-    ).first()
-
-    if not existing_sub or not existing_sub.stripe_customer_id:
-        # No subscription yet — redirect to pricing page
-        base_url = str(request.base_url).rstrip("/")
-        return {"url": f"{base_url}/#pricing"}
-
+    """Redirect user to the subscription management page (pricing page for now)."""
     base_url = str(request.base_url).rstrip("/")
-
-    try:
-        session = stripe.billing_portal.Session.create(
-            customer=existing_sub.stripe_customer_id,
-            return_url=f"{base_url}/#pricing",
-        )
-        return {"url": session.url}
-    except stripe.error.StripeError as e:
-        log.error(f"Stripe portal error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to create portal session")
+    return {"url": f"{base_url}/#pricing"}
 
 
 # ═══════════════════════════════════════════════════════════
-# Stripe Webhook
+# Paymob Webhook
 # ═══════════════════════════════════════════════════════════
 
 @router.post("/webhook")
-async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
+async def paymob_webhook(request: Request, db: Session = Depends(get_db)):
     """
-    Receive Stripe webhook events to sync subscription status.
+    Receive Paymob webhook events to sync subscription status.
 
     Key events:
-      - checkout.session.completed: initial subscription created
-      - invoice.payment_succeeded: recurring payment succeeded
-      - invoice.payment_failed: payment failed (mark as past_due)
-      - customer.subscription.updated: subscription changed
-      - customer.subscription.deleted: subscription cancelled
+      - transaction.processed:    Payment succeeded (new or recurring)
+      - transaction.failed:       Payment failed
+      - transaction.voided:       Payment voided/refunded
     """
     payload = await request.body()
-    sig_header = request.headers.get("stripe-signature", "")
+    hmac_header = request.headers.get("hmac", "")
+
+    # Verify HMAC signature
+    if not verify_webhook_signature(payload, hmac_header):
+        log.warning("Paymob webhook: invalid HMAC signature")
+        return {"status": "ignored"}
 
     try:
-        event = stripe.Webhook.construct_event(
-            payload, sig_header, config.STRIPE_WEBHOOK_SECRET
-        )
-    except ValueError:
-        log.warning("Stripe webhook: invalid payload")
-        return {"status": "ignored"}, 400
-    except stripe.error.SignatureVerificationError:
-        log.warning("Stripe webhook: invalid signature")
-        return {"status": "ignored"}, 400
+        data = json.loads(payload)
+    except json.JSONDecodeError:
+        log.warning("Paymob webhook: invalid JSON payload")
+        return {"status": "ignored"}
 
-    event_type = event.type
-    log.info(f"Stripe webhook: {event_type}")
+    event_type = data.get("type", "")
 
-    if event_type == "checkout.session.completed":
-        _handle_checkout_completed(event.data.object, db)
-    elif event_type == "invoice.payment_succeeded":
-        _handle_invoice_succeeded(event.data.object, db)
-    elif event_type == "invoice.payment_failed":
-        _handle_invoice_failed(event.data.object, db)
-    elif event_type == "customer.subscription.updated":
-        _handle_subscription_updated(event.data.object, db)
-    elif event_type == "customer.subscription.deleted":
-        _handle_subscription_deleted(event.data.object, db)
+    if event_type == "transaction.processed":
+        _handle_transaction_processed(data.get("obj", {}), db)
+    elif event_type == "transaction.failed":
+        _handle_transaction_failed(data.get("obj", {}), db)
+    elif event_type == "transaction.voided":
+        _handle_transaction_voided(data.get("obj", {}), db)
+    else:
+        log.info(f"Paymob webhook: unhandled event type '{event_type}'")
 
     return {"status": "received"}
 
@@ -329,136 +475,85 @@ def _get_or_create_subscription(user_id: int, db: Session) -> SubscriptionModel:
     return sub
 
 
-def _handle_checkout_completed(session, db: Session):
-    """Handle initial subscription purchase."""
-    metadata = session.get("metadata", {})
-    user_id_str = metadata.get("user_id", "")
-    tier = metadata.get("tier", "basic")
+def _handle_transaction_processed(obj: dict, db: Session):
+    """Handle successful payment — activate subscription."""
+    success = obj.get("success", False)
+    if not success:
+        return
+
+    # Extract custom data passed during intention creation
+    data = obj.get("data") or {}
+    custom_data = data.get("custom_data") or {}
+    intention_id = data.get("intention_id", "")
+
+    user_id_str = custom_data.get("user_id", "")
+    tier = custom_data.get("tier", "basic")
 
     if not user_id_str:
-        log.warning("Checkout completed without user_id in metadata")
+        log.warning("Transaction processed without user_id in custom_data")
         return
 
     user_id = int(user_id_str)
     user = db.query(UserModel).filter(UserModel.id == user_id).first()
     if not user:
-        log.warning(f"Checkout completed for unknown user: {user_id}")
+        log.warning(f"Transaction processed for unknown user: {user_id}")
         return
 
-    subscription = session.get("subscription", "")
-    customer = session.get("customer", "")
+    # Extract payment details
+    card_token = obj.get("card_token", "") or obj.get("saved_card_token", "")
+    card_num = obj.get("card_num", "")
+    payment_method = "card" if card_num else "wallet"
+    order_id = str(obj.get("order", {}).get("id", "")) if isinstance(obj.get("order"), dict) else ""
 
     sub = _get_or_create_subscription(user_id, db)
     sub.tier = tier
     sub.status = "active"
-    sub.stripe_customer_id = customer
-    sub.stripe_subscription_id = subscription
+    sub.payment_method = payment_method
+    sub.paymob_intention_id = intention_id or sub.paymob_intention_id
+    sub.paymob_order_id = order_id or sub.paymob_order_id
     sub.current_period_start = datetime.utcnow()
-
-    # Calculate period end (default 1 month)
-    from datetime import timedelta
     sub.current_period_end = datetime.utcnow() + timedelta(days=30)
-    sub.updated_at = datetime.utcnow()
 
-    db.commit()
-    log.info(f"Subscription activated for user {user.email}: {tier}")
+    # Save card token for recurring payments
+    if card_token:
+        sub.paymob_card_token = card_token
+        sub.payment_type = "recurring"
 
-
-def _handle_invoice_succeeded(invoice, db: Session):
-    """Handle successful recurring payment."""
-    subscription_id = invoice.get("subscription", "")
-    customer = invoice.get("customer", "")
-    period_start = invoice.get("period_start", None)
-    period_end = invoice.get("period_end", None)
-
-    if not subscription_id:
-        return
-
-    # Find the subscription by Stripe subscription ID
-    sub = db.query(SubscriptionModel).filter(
-        SubscriptionModel.stripe_subscription_id == subscription_id,
-    ).first()
-    if not sub:
-        log.warning(f"Invoice succeeded for unknown subscription: {subscription_id}")
-        return
-
-    sub.status = "active"
-    if period_start:
-        sub.current_period_start = datetime.fromtimestamp(period_start)
-    if period_end:
-        sub.current_period_end = datetime.fromtimestamp(period_end)
     sub.updated_at = datetime.utcnow()
     db.commit()
-    log.info(f"Subscription renewed: {sub.id}")
+
+    log.info(
+        f"Subscription activated for {user.email}: {tier} "
+        f"({payment_method}, recurring={bool(card_token)})"
+    )
 
 
-def _handle_invoice_failed(invoice, db: Session):
-    """Handle failed payment — mark subscription as past_due."""
-    subscription_id = invoice.get("subscription", "")
-    if not subscription_id:
-        return
+def _handle_transaction_failed(obj: dict, db: Session):
+    """Handle failed payment."""
+    data = obj.get("data", {}) or {}
+    custom_data = data.get("custom_data", {}) or {}
+    user_id_str = custom_data.get("user_id", "")
 
-    sub = db.query(SubscriptionModel).filter(
-        SubscriptionModel.stripe_subscription_id == subscription_id,
-    ).first()
-    if sub:
-        sub.status = "past_due"
-        sub.updated_at = datetime.utcnow()
-        db.commit()
-        log.warning(f"Subscription past_due: {sub.id}")
-
-
-def _handle_subscription_updated(subscription, db: Session):
-    """Handle subscription changes (upgrade, downgrade, etc.)."""
-    sub_id = subscription.get("id", "")
-    status = subscription.get("status", "")
-    items = subscription.get("items", {}).get("data", [])
-    metadata = subscription.get("metadata", {})
-
-    sub = db.query(SubscriptionModel).filter(
-        SubscriptionModel.stripe_subscription_id == sub_id,
-    ).first()
-    if not sub:
-        log.warning(f"Subscription updated for unknown: {sub_id}")
-        return
-
-    # Map Stripe status
-    status_map = {
-        "active": "active",
-        "past_due": "past_due",
-        "canceled": "cancelled",
-        "incomplete": "incomplete",
-        "incomplete_expired": "cancelled",
-        "trialing": "active",
-        "unpaid": "past_due",
-    }
-    sub.status = status_map.get(status, "active")
-
-    # Try to get tier from metadata or item price
-    tier = metadata.get("tier", "")
-    if not tier and items:
-        price_id = items[0].get("price", {}).get("id", "")
-        # Map price ID to tier
-        if price_id == config.STRIPE_PREMIUM_PRICE_ID:
-            tier = "premium"
-        elif price_id == config.STRIPE_VIP_PRICE_ID:
-            tier = "vip"
-
-    if tier:
-        sub.tier = tier
-    sub.updated_at = datetime.utcnow()
-    db.commit()
-    log.info(f"Subscription updated: {sub.id} → {sub.tier} ({sub.status})")
+    if user_id_str:
+        user_id = int(user_id_str)
+        sub = _get_or_create_subscription(user_id, db)
+        if sub.status == "active":
+            sub.status = "past_due"
+            sub.updated_at = datetime.utcnow()
+            db.commit()
+            log.warning(f"Subscription past_due due to failed payment: user {user_id}")
 
 
-def _handle_subscription_deleted(subscription, db: Session):
-    """Handle subscription cancellation."""
-    sub_id = subscription.get("id", "")
-    sub = db.query(SubscriptionModel).filter(
-        SubscriptionModel.stripe_subscription_id == sub_id,
-    ).first()
-    if sub:
+def _handle_transaction_voided(obj: dict, db: Session):
+    """Handle voided/refunded payment — cancel subscription."""
+    data = obj.get("data", {}) or {}
+    custom_data = data.get("custom_data", {}) or {}
+    user_id_str = custom_data.get("user_id", "")
+
+    if user_id_str:
+        user_id = int(user_id_str)
+        sub = _get_or_create_subscription(user_id, db)
         sub.status = "cancelled"
         sub.updated_at = datetime.utcnow()
         db.commit()
-        log.info(f"Subscription cancelled: {sub.id}")
+        log.info(f"Subscription cancelled due to void/refund: user {user_id}")

@@ -96,10 +96,14 @@ OPTIONAL_ENV_VARS: dict[str, str] = {
     "GOOGLE_API_KEY": "Google Gemini API key",
     "GROQ_API_KEY": "Groq API key (free, no credit card)",
     "OPENROUTER_API_KEY": "OpenRouter API key",
-    # Stripe
-    "STRIPE_SECRET_KEY": "Stripe secret key for payments",
-    "STRIPE_PUBLISHABLE_KEY": "Stripe publishable key",
-    "STRIPE_WEBHOOK_SECRET": "Stripe webhook signing secret",
+    # Paymob (Egyptian payment gateway)
+    "PAYMOB_API_KEY": "Paymob secret API key",
+    "PAYMOB_PUBLIC_KEY": "Paymob public key for checkout",
+    "PAYMOB_WEBHOOK_SECRET": "Paymob webhook HMAC secret",
+    "PAYMOB_INTEGRATION_ID_CARDS": "Paymob integration ID for card payments",
+    "PAYMOB_INTEGRATION_ID_WALLETS": "Paymob integration ID for mobile wallets",
+    "PAYMOB_PREMIUM_PRICE_CENTS": "Premium tier price in EGP piastres (e.g. 2999 = 29.99 EGP)",
+    "PAYMOB_VIP_PRICE_CENTS": "VIP tier price in EGP piastres (e.g. 8999 = 89.99 EGP)",
     # Clerk
     "CLERK_WEBHOOK_SECRET": "Clerk webhook signing secret",
     # PubMed
@@ -220,13 +224,15 @@ CUSTOM_ENDPOINT    = _env("CUSTOM_ENDPOINT", "")
 CUSTOM_MODEL       = _env("CUSTOM_MODEL", "")
 
 # ══════════════════════════════════════════════════════
-# Stripe
+# Paymob (Egyptian payment gateway)
 # ══════════════════════════════════════════════════════
-STRIPE_SECRET_KEY      = _env("STRIPE_SECRET_KEY", "")
-STRIPE_PUBLISHABLE_KEY = _env("STRIPE_PUBLISHABLE_KEY", "")
-STRIPE_WEBHOOK_SECRET  = _env("STRIPE_WEBHOOK_SECRET", "")
-STRIPE_PREMIUM_PRICE_ID = _env("STRIPE_PREMIUM_PRICE_ID", "")
-STRIPE_VIP_PRICE_ID     = _env("STRIPE_VIP_PRICE_ID", "")
+PAYMOB_API_KEY              = _env("PAYMOB_API_KEY", "")
+PAYMOB_PUBLIC_KEY           = _env("PAYMOB_PUBLIC_KEY", "")
+PAYMOB_WEBHOOK_SECRET       = _env("PAYMOB_WEBHOOK_SECRET", "")
+PAYMOB_INTEGRATION_ID_CARDS = _env("PAYMOB_INTEGRATION_ID_CARDS", "")
+PAYMOB_INTEGRATION_ID_WALLETS = _env("PAYMOB_INTEGRATION_ID_WALLETS", "")
+PAYMOB_PREMIUM_PRICE_CENTS  = int(_env("PAYMOB_PREMIUM_PRICE_CENTS", "2999"))   # 29.99 EGP
+PAYMOB_VIP_PRICE_CENTS      = int(_env("PAYMOB_VIP_PRICE_CENTS", "8999"))       # 89.99 EGP
 
 # ══════════════════════════════════════════════════════
 # Clerk
