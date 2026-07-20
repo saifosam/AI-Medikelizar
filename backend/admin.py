@@ -103,97 +103,119 @@ async def dashboard(db: Session = Depends(get_db)):
     seven_days_ago = now - timedelta(days=7)
 
     # ── User stats from local DB ──
-    total_users = db.query(func.count(UserModel.id)).scalar() or 0
+    # On Vercel serverless, SQLite is read-only and tables may not exist.
+    # If any DB query fails, fall through to the Clerk API fallback.
+    total_users = 0
+    try:
+        total_users = db.query(func.count(UserModel.id)).scalar() or 0
+    except Exception:
+        total_users = 0
 
-    # ── If local DB is empty, fall back to Clerk API ──
+    # ── If local DB is empty or errored, fall back to Clerk API ──
     if total_users == 0:
         clerk_data = _fetch_clerk_users()
         if clerk_data:
             return _build_dashboard_from_clerk(clerk_data, now, seven_days_ago)
 
-    # ── Local DB path (everything below here) ──
-    new_users_7d = db.query(func.count(UserModel.id)).filter(
-        UserModel.created_at >= seven_days_ago
-    ).scalar() or 0
+    # ── Local DB path (everything below here, wrapped for safety) ──
+    try:
+        new_users_7d = db.query(func.count(UserModel.id)).filter(
+            UserModel.created_at >= seven_days_ago
+        ).scalar() or 0
 
-    # ── Query stats ──
-    total_queries = db.query(func.count(QueryLogModel.id)).scalar() or 0
-    queries_7d = db.query(func.count(QueryLogModel.id)).filter(
-        QueryLogModel.created_at >= seven_days_ago
-    ).scalar() or 0
+        # ── Query stats ──
+        total_queries = db.query(func.count(QueryLogModel.id)).scalar() or 0
+        queries_7d = db.query(func.count(QueryLogModel.id)).filter(
+            QueryLogModel.created_at >= seven_days_ago
+        ).scalar() or 0
 
-    # ── Subscription stats ──
-    active_subs = db.query(func.count(SubscriptionModel.id)).filter(
-        SubscriptionModel.status == "active",
-    ).scalar() or 0
+        # ── Subscription stats ──
+        active_subs = db.query(func.count(SubscriptionModel.id)).filter(
+            SubscriptionModel.status == "active",
+        ).scalar() or 0
 
-    users_by_tier = {}
-    tier_counts = db.query(
-        SubscriptionModel.tier, func.count(SubscriptionModel.id)
-    ).filter(
-        SubscriptionModel.status == "active",
-    ).group_by(SubscriptionModel.tier).all()
-    for tier, count in tier_counts:
-        users_by_tier[tier] = count
+        users_by_tier = {}
+        tier_counts = db.query(
+            SubscriptionModel.tier, func.count(SubscriptionModel.id)
+        ).filter(
+            SubscriptionModel.status == "active",
+        ).group_by(SubscriptionModel.tier).all()
+        for tier, count in tier_counts:
+            users_by_tier[tier] = count
 
-    # ── Revenue (estimated from active subscriptions) ──
-    total_revenue_cents = 0
-    revenue_7d_cents = 0
-    revenue_by_tier = {}
+        # ── Revenue (estimated from active subscriptions) ──
+        total_revenue_cents = 0
+        revenue_7d_cents = 0
+        revenue_by_tier = {}
 
-    for tier, count in tier_counts:
-        if tier == "premium":
-            price = app_config.PAYMOB_PREMIUM_PRICE_CENTS
-        elif tier == "vip":
-            price = app_config.PAYMOB_VIP_PRICE_CENTS
-        else:
-            price = 0
-        revenue_by_tier[tier] = count * price
-        total_revenue_cents += count * price
+        for tier, count in tier_counts:
+            if tier == "premium":
+                price = app_config.PAYMOB_PREMIUM_PRICE_CENTS
+            elif tier == "vip":
+                price = app_config.PAYMOB_VIP_PRICE_CENTS
+            else:
+                price = 0
+            revenue_by_tier[tier] = count * price
+            total_revenue_cents += count * price
 
-    recent_subs = db.query(SubscriptionModel).filter(
-        SubscriptionModel.created_at >= seven_days_ago
-    ).all()
-    for sub in recent_subs:
-        if sub.tier == "premium":
-            revenue_7d_cents += app_config.PAYMOB_PREMIUM_PRICE_CENTS
-        elif sub.tier == "vip":
-            revenue_7d_cents += app_config.PAYMOB_VIP_PRICE_CENTS
+        recent_subs = db.query(SubscriptionModel).filter(
+            SubscriptionModel.created_at >= seven_days_ago
+        ).all()
+        for sub in recent_subs:
+            if sub.tier == "premium":
+                revenue_7d_cents += app_config.PAYMOB_PREMIUM_PRICE_CENTS
+            elif sub.tier == "vip":
+                revenue_7d_cents += app_config.PAYMOB_VIP_PRICE_CENTS
 
-    # ── Recent users from local DB ──
-    recent_users_raw = db.query(UserModel).order_by(
-        UserModel.created_at.desc()
-    ).limit(20).all()
+        # ── Recent users from local DB ──
+        recent_users_raw = db.query(UserModel).order_by(
+            UserModel.created_at.desc()
+        ).limit(20).all()
 
-    recent_users = []
-    for u in recent_users_raw:
-        sub = db.query(SubscriptionModel).filter(
-            SubscriptionModel.user_id == u.id,
-        ).order_by(SubscriptionModel.created_at.desc()).first()
-        recent_users.append(UserOut(
-            id=u.id,
-            clerk_id=u.clerk_id,
-            email=u.email,
-            name=u.name,
-            is_admin=u.is_admin,
-            tier=sub.tier if sub else "basic",
-            subscription_status=sub.status if sub else "",
-            created_at=u.created_at,
-        ))
+        recent_users = []
+        for u in recent_users_raw:
+            sub = db.query(SubscriptionModel).filter(
+                SubscriptionModel.user_id == u.id,
+            ).order_by(SubscriptionModel.created_at.desc()).first()
+            recent_users.append(UserOut(
+                id=u.id,
+                clerk_id=u.clerk_id,
+                email=u.email,
+                name=u.name,
+                is_admin=u.is_admin,
+                tier=sub.tier if sub else "basic",
+                subscription_status=sub.status if sub else "",
+                created_at=u.created_at,
+            ))
 
-    return {
-        "total_users": total_users,
-        "new_users_7d": new_users_7d,
-        "total_queries": total_queries,
-        "queries_7d": queries_7d,
-        "total_revenue_cents": total_revenue_cents,
-        "revenue_7d_cents": revenue_7d_cents,
-        "active_subscriptions": active_subs,
-        "users_by_tier": users_by_tier,
-        "data_source": "local_db",
-        "revenue_by_tier": {k: v for k, v in sorted(revenue_by_tier.items(), key=lambda x: -x[1])},
-        "recent_users": [u.model_dump() for u in recent_users],
-    }
+        return {
+            "total_users": total_users,
+            "new_users_7d": new_users_7d,
+            "total_queries": total_queries,
+            "queries_7d": queries_7d,
+            "total_revenue_cents": total_revenue_cents,
+            "revenue_7d_cents": revenue_7d_cents,
+            "active_subscriptions": active_subs,
+            "users_by_tier": users_by_tier,
+            "data_source": "local_db",
+            "revenue_by_tier": {k: v for k, v in sorted(revenue_by_tier.items(), key=lambda x: -x[1])},
+            "recent_users": [u.model_dump() for u in recent_users],
+        }
+    except Exception:
+        # Last-resort fallback if even the local DB path fails
+        return {
+            "total_users": total_users,
+            "new_users_7d": 0,
+            "total_queries": 0,
+            "queries_7d": 0,
+            "total_revenue_cents": 0,
+            "revenue_7d_cents": 0,
+            "active_subscriptions": 0,
+            "users_by_tier": {"basic": total_users},
+            "data_source": "error_fallback",
+            "revenue_by_tier": {},
+            "recent_users": [],
+        }
 
 
 def _build_dashboard_from_clerk(clerk_data: dict, now: datetime, seven_days_ago: datetime) -> dict:

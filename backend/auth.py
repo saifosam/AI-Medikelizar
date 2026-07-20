@@ -242,35 +242,37 @@ async def get_current_user(request: Request, db: Session = Depends(get_db)) -> O
     if not clerk_user_id:
         return None
 
-    # Look up the local user by Clerk ID
-    user = db.query(UserModel).filter(
-        UserModel.clerk_id == clerk_user_id
-    ).first()
+    # ── Try to look up or create the local user ──
+    # On Vercel serverless, SQLite is read-only and tables may not
+    # exist. If any DB operation fails, we return an in-memory user
+    # object with the correct authentication and admin status.
 
-    if user:
-        return user
-
-    # ── User not found in DB — create on-the-fly from headers ──
-    # The frontend sends Clerk user info as custom headers so we
-    # don't need a Clerk webhook to pre-sync users.
     email = request.headers.get("X-Clerk-User-Email", "").strip().lower()
     name = request.headers.get("X-Clerk-User-Name", "").strip()
-
-    if not email:
-        log.warning(f"Clerk user {clerk_user_id} not in DB and no email header provided — cannot create")
-        return None
-
     is_admin = email in config.ADMIN_EMAILS
 
-    user = UserModel(
-        clerk_id=clerk_user_id,
-        email=email,
-        name=name,
-        is_admin=is_admin,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
-    )
     try:
+        # Look up the local user by Clerk ID
+        user = db.query(UserModel).filter(
+            UserModel.clerk_id == clerk_user_id
+        ).first()
+
+        if user:
+            return user
+
+        # ── User not found in DB — create on-the-fly from headers ──
+        if not email:
+            log.warning(f"Clerk user {clerk_user_id} not in DB and no email header provided — cannot create")
+            return None
+
+        user = UserModel(
+            clerk_id=clerk_user_id,
+            email=email,
+            name=name,
+            is_admin=is_admin,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
         db.add(user)
         db.commit()
         db.refresh(user)
@@ -280,16 +282,16 @@ async def get_current_user(request: Request, db: Session = Depends(get_db)) -> O
         db.rollback()
         # Another concurrent request created this user between our
         # query and insert — just return the now-existing record
-        return db.query(UserModel).filter(
-            UserModel.clerk_id == clerk_user_id
-        ).first()
+        try:
+            return db.query(UserModel).filter(
+                UserModel.clerk_id == clerk_user_id
+            ).first()
+        except Exception:
+            return _build_in_memory_user(clerk_user_id, email, name, is_admin)
     except Exception as e:
-        # DB might be read-only (e.g. Vercel serverless with SQLite).
-        # Return the in-memory user object without persisting — the user
-        # can still be authenticated and their is_admin status is correct.
         db.rollback()
-        log.info(f"Returning in-memory user (DB write failed: {e}): {email} (admin={is_admin})")
-        return user
+        log.info(f"Returning in-memory user (DB operation failed: {e}): {email} (admin={is_admin})")
+        return _build_in_memory_user(clerk_user_id, email, name, is_admin)
 
 
 def _extract_clerk_user_id(token: str) -> Optional[str]:
@@ -316,6 +318,23 @@ def _extract_clerk_user_id(token: str) -> Optional[str]:
     except Exception:
         log.debug("Could not extract Clerk user ID from session token")
         return None
+
+
+def _build_in_memory_user(clerk_id: str, email: str, name: str, is_admin: bool) -> UserModel:
+    """Create an in-memory UserModel instance without persisting to DB.
+
+    Used when the database is read-only (e.g. Vercel serverless with SQLite)
+    or the tables don't exist yet. The returned user has correct auth and
+    admin status but no local DB id."""
+    return UserModel(
+        id=0,
+        clerk_id=clerk_id,
+        email=email,
+        name=name,
+        is_admin=is_admin,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+    )
 
 
 async def require_user(user: Optional[UserModel] = Depends(get_current_user)) -> UserModel:
