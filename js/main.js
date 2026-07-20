@@ -1393,29 +1393,31 @@
         window.location.hash = "#home";
         return;
       }
-      // Double-check with server
+
+      // Server-side double check (best-effort — falls back to client-side isAdmin)
+      let serverConfirmed = false;
       try {
         const headers = await getAuthHeaders();
         const resp = await fetch(`${API_BASE}/api/auth/me`, {
           credentials: "include",
           headers: headers,
         });
-        if (!resp.ok) {
-          window.location.hash = "#home";
-          return;
-        }
-        const data = await resp.json();
-        if (!data.is_admin) {
-          window.location.hash = "#home";
-          return;
+        if (resp.ok) {
+          const data = await resp.json();
+          serverConfirmed = data.is_admin === true;
         }
       } catch (e) {
+        console.debug("Admin server double-check failed, relying on client:", e.message);
+      }
+
+      // Only redirect if BOTH server AND client checks fail
+      if (!serverConfirmed && !resolveAdminFromClient()) {
         window.location.hash = "#home";
         return;
       }
+
       loadAdminDashboard();
     }
-
   };
 
   /* ─── Init ─── */

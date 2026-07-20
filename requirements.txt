@@ -1,0 +1,15 @@
+fastapi>=0.115.0
+uvicorn>=0.32.0
+httpx>=0.28.0
+python-dotenv>=1.0.0
+asgiref>=3.8.0
+
+# Database
+sqlalchemy>=2.0.0
+alembic>=1.13.0
+
+# Payments
+stripe>=8.0.0
+
+# Rate limiting
+slowapi>=0.1.9
