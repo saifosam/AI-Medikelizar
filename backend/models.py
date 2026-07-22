@@ -46,6 +46,7 @@ class SubscriptionModel(SA_Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     tier = Column(String(50), default="basic")       # basic | premium | vip
     status = Column(String(50), default="active")     # active | cancelled | past_due
+    daily_limit = Column(Integer, nullable=True)       # User's chosen daily query limit (adjustable for premium/vip)
     payment_method = Column(String(50), default="")   # card | wallet | installments
     paymob_intention_id = Column(String(255), default="")
     paymob_card_token = Column(String(255), default="")   # For recurring payments

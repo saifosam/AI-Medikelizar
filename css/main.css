@@ -1984,6 +1984,200 @@ ul { list-style: none; }
 }
 
 /* ═══════════════════════════════════════════════════
+   CREDIT / QUOTA INDICATORS
+   ═══════════════════════════════════════════════════ */
+
+/* ─── Nav credit indicator ─── */
+.credit-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1875rem 0.5rem;
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-subtle);
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-right: 0.125rem;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+.credit-indicator svg {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+.credit-indicator.credit-low {
+  color: var(--confidence-medium);
+  border-color: rgba(138, 138, 61, 0.3);
+  background: rgba(138, 138, 61, 0.08);
+}
+.credit-indicator.credit-low svg {
+  color: var(--confidence-medium);
+}
+.credit-indicator.credit-empty {
+  color: var(--confidence-low);
+  border-color: rgba(138, 90, 61, 0.3);
+  background: rgba(138, 90, 61, 0.08);
+}
+.credit-indicator.credit-empty svg {
+  color: var(--confidence-low);
+}
+
+/* ─── Query input badge ─── */
+.credit-badge {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0.25rem 0.5rem 0 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-align: right;
+}
+.credit-badge-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.credit-badge-text::before {
+  content: "";
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--confidence-high);
+  flex-shrink: 0;
+}
+.credit-badge.credit-low .credit-badge-text::before {
+  background: var(--confidence-medium);
+}
+.credit-badge.credit-empty .credit-badge-text::before {
+  background: var(--confidence-low);
+}
+
+/* ─── Limit reached message ─── */
+.limit-reached-msg {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  margin-top: 0.5rem;
+  background: rgba(138, 90, 61, 0.08);
+  border: 1px solid rgba(138, 90, 61, 0.25);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  color: var(--confidence-low);
+  line-height: 1.4;
+}
+.limit-reached-msg svg {
+  flex-shrink: 0;
+  color: var(--confidence-low);
+}
+.limit-reached-link {
+  margin-left: auto;
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+  font-size: 0.75rem;
+}
+.limit-reached-link:hover {
+  text-decoration: underline;
+}
+
+[dir="rtl"] .limit-reached-link {
+  margin-left: 0;
+  margin-right: auto;
+}
+[dir="rtl"] .credit-badge {
+  text-align: left;
+}
+
+/* ─── Pricing slider ─── */
+.pricing-slider-container {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-divider);
+}
+.pricing-slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+.pricing-slider-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.pricing-slider-value {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.pricing-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--border-medium);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.pricing-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg-surface);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+.pricing-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+.pricing-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg-surface);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  cursor: pointer;
+}
+.pricing-slider-price {
+  margin-top: 0.5rem;
+  text-align: center;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+.pricing-slider-price-unit {
+  font-size: 0.6875rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+.pricing-slider-range-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.625rem;
+  color: var(--text-light);
+  margin-top: 0.25rem;
+}
+
+[dir="rtl"] .pricing-slider-header {
+  flex-direction: row-reverse;
+}
+
+/* ═══════════════════════════════════════════════════
    LANGUAGE SWITCHER
    ═══════════════════════════════════════════════════ */
 

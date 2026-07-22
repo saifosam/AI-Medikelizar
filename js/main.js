@@ -593,6 +593,8 @@
       sources: followupSources,
     });
     console.log(`Follow-up tracked (demo): query="${followupQuery}"`);
+    // Update credit indicators after query
+    fetchCredits();
   }
 
   /* ─── Reset results ─── */
@@ -640,7 +642,8 @@
 
   /* ─── Display a result from the backend API ─── */
   function displayBackendResult(data) {
-    answerContent.hidden = false;      const answerHtml = data.answer || `<p>${__("results.noAnswer")}</p>`;
+    answerContent.hidden = false;
+    const answerHtml = data.answer || `<p>${__("results.noAnswer")}</p>`;
     const sources = (data.sources || []).map((s, i) => ({
       id: s.id || i + 1,
       title: s.title || "Untitled",
@@ -679,6 +682,8 @@
     if (data.provider) {
       console.log(`Answered by: ${data.provider} · ${data.model}`);
     }
+    // Update credit indicators after query
+    fetchCredits();
   }
 
   /* ─── Generate demo answer (fallback) ─── */
@@ -921,6 +926,87 @@
   }
 
   /* ─── Pricing page ─── */
+  let pricingSliderTier = null;
+  let pricingSliderMin = 10;
+  let pricingSliderMax = 25;
+
+  function initPricingSlider(tierId, container) {
+    if (tierId === "basic") return;
+    const tierInfo = PRICING_TIERS_DATA?.[tierId];
+    if (!tierInfo) return;
+
+    const min = tierInfo.daily_limit_min || (tierId === "premium" ? 10 : 25);
+    const max = tierInfo.daily_limit_max || (tierId === "premium" ? 25 : 60);
+    const current = tierInfo.daily_limit || Math.round((min + max) / 2);
+
+    pricingSliderTier = tierId;
+    pricingSliderMin = min;
+    pricingSliderMax = max;
+
+    const sliderHtml = `
+      <div class="pricing-slider-container">
+        <div class="pricing-slider-header">
+          <span class="pricing-slider-label">Daily queries</span>
+          <span class="pricing-slider-value" id="pricing-slider-value-${tierId}">${current}</span>
+        </div>
+        <input type="range" class="pricing-slider" id="pricing-slider-${tierId}"
+               min="${min}" max="${max}" value="${current}"
+               aria-label="Adjust daily query limit">
+        <div class="pricing-slider-range-labels">
+          <span>${min}/day</span>
+          <span>${max}/day</span>
+        </div>
+        <div class="pricing-slider-price" id="pricing-slider-price-${tierId}">
+          Loading…
+        </div>
+      </div>
+    `;
+
+    const existing = container.querySelector(".pricing-slider-container");
+    if (existing) existing.remove();
+    container.insertAdjacentHTML("beforeend", sliderHtml);
+
+    const slider = document.getElementById(`pricing-slider-${tierId}`);
+    const priceEl = document.getElementById(`pricing-slider-price-${tierId}`);
+
+    const updatePrice = async (val) => {
+      const valueEl = document.getElementById(`pricing-slider-value-${tierId}`);
+      if (valueEl) valueEl.textContent = val;
+      try {
+        const resp = await fetch(`${API_BASE}/api/subscriptions/pricing/calculate?tier=${tierId}&daily_limit=${val}`);
+        if (resp.ok) {
+          const data = await resp.json();
+          const priceEGP = (data.price_cents / 100).toFixed(2);
+          priceEl.innerHTML = `${priceEGP} <span class="pricing-slider-price-unit">EGP / month</span>`;
+        }
+      } catch (e) {
+        priceEl.textContent = "—";
+      }
+    };
+
+    slider.addEventListener("input", () => updatePrice(slider.value));
+    updatePrice(current);
+  }
+
+  let PRICING_TIERS_DATA = null;
+
+  async function loadPricing() {
+    try {
+      const resp = await fetch(`${API_BASE}/api/subscriptions/pricing`);
+      if (!resp.ok) {
+        throw new Error("Backend not available");
+      }
+      const data = await resp.json();
+      PRICING_TIERS_DATA = {};
+      (data.tiers || []).forEach(t => { PRICING_TIERS_DATA[t.id] = t; });
+      pricingTiers = data.tiers || [];
+    } catch (e) {
+      console.warn("Pricing API unavailable, using placeholder:", e.message);
+      pricingTiers = PLACEHOLDER_TIERS;
+    }
+    renderPricingCards();
+    loadSubscriptionStatus();
+  }
   let pricingTiers = [];
   let pricingAnnual = false;
 
@@ -931,6 +1017,7 @@
       label: "Basic",
       price_cents: 0,
       queries_per_day: 5,
+      daily_limit: 5, daily_limit_min: 5, daily_limit_max: 5,
       features: [
         "5 queries per day",
         "Standard response speed",
@@ -943,8 +1030,9 @@
       label: "Premium",
       price_cents: 999,
       queries_per_day: 50,
+      daily_limit: 15, daily_limit_min: 10, daily_limit_max: 25,
       features: [
-        "50 queries per day",
+        "10–25 queries per day (adjustable)",
         "Faster response priority",
         "Detailed source citations",
         "Priority email support",
@@ -955,8 +1043,9 @@
       label: "VIP",
       price_cents: 2999,
       queries_per_day: -1,
+      daily_limit: 40, daily_limit_min: 25, daily_limit_max: 60,
       features: [
-        "Unlimited queries",
+        "25–60 queries per day (adjustable)",
         "Fastest response priority",
         "Full source citations with abstracts",
         "Priority support (email + chat)",
@@ -965,32 +1054,16 @@
     },
   ];
 
-  async function loadPricing() {
-    try {
-      const resp = await fetch(`${API_BASE}/api/subscriptions/pricing`);
-      if (!resp.ok) {
-        throw new Error("Backend not available");
-      }
-      const data = await resp.json();
-      pricingTiers = data.tiers || [];
-    } catch (e) {
-      console.warn("Pricing API unavailable, using placeholder:", e.message);
-      pricingTiers = PLACEHOLDER_TIERS;
-    }
-    renderPricingCards();
-    loadSubscriptionStatus();
-  }
-
   function renderPricingCards() {
     const grid = document.getElementById("pricing-grid");
     if (!grid) return;
 
     grid.innerHTML = pricingTiers.map((tier) => {
       const isFree = tier.price_cents === 0;
-      const price = pricingAnnual && !isFree
+      const priceVal = pricingAnnual && !isFree
         ? Math.round(tier.price_cents * 0.8)
         : tier.price_cents;
-      const priceDisplay = isFree ? __("pricing.free") : `$${(price / 100).toFixed(2)}`;
+      const priceDisplay = isFree ? __("pricing.free") : `EGP ${(priceVal / 100).toFixed(2)}`;
       const unit = isFree ? "" : pricingAnnual ? __("pricing.billedAnnually") : __("pricing.perMonth");
       const queriesDisplay = tier.queries_per_day === -1
         ? __("pricing.unlimited")
@@ -1371,6 +1444,90 @@
     headings.forEach((h, i) => {
       if (hKeys[i]) h.textContent = __(hKeys[i]);
     });
+  }
+
+  /* ─── Credit / Quota tracking ─── */
+  let creditState = { used: 0, limit: 5, remaining: 5, tier: "basic" };
+
+  async function fetchCredits() {
+    try {
+      const headers = await getAuthHeaders();
+      const resp = await fetch(`${API_BASE}/api/subscriptions/credits`, {
+        credentials: "include",
+        headers: headers,
+        signal: AbortSignal.timeout(5000),
+      });
+      if (resp.ok) {
+        creditState = await resp.json();
+        updateCreditIndicators();
+      }
+    } catch (e) {
+      // Silently fail — indicators will show defaults
+    }
+  }
+
+  function updateCreditIndicators() {
+    const { used, limit, remaining, tier } = creditState;
+    const nav = document.getElementById("credit-indicator");
+    const badge = document.getElementById("credit-badge");
+    const limitMsg = document.getElementById("limit-reached-msg");
+    if (!nav || !badge) return;
+
+    // Show indicators only for signed-in users
+    if (!window.Clerk || !Clerk.isSignedIn) {
+      nav.style.display = "none";
+      badge.style.display = "none";
+      if (limitMsg) limitMsg.style.display = "none";
+      return;
+    }
+
+    const isUnlimited = limit === -1;
+    const indicatorText = document.getElementById("credit-indicator-text");
+    const badgeText = document.getElementById("credit-badge-text");
+    const limitText = document.getElementById("limit-reached-text");
+
+    if (isUnlimited) {
+      nav.style.display = "flex";
+      nav.className = "credit-indicator";
+      indicatorText.textContent = "∞";
+      badge.style.display = "none";
+      if (limitMsg) limitMsg.style.display = "none";
+      return;
+    }
+
+    // Nav indicator
+    nav.style.display = "flex";
+    const ratio = used / limit;
+    if (ratio >= 1) {
+      nav.className = "credit-indicator credit-empty";
+    } else if (ratio >= 0.75) {
+      nav.className = "credit-indicator credit-low";
+    } else {
+      nav.className = "credit-indicator";
+    }
+    indicatorText.textContent = `${used}/${limit}`;
+
+    // Input badge
+    badge.style.display = "flex";
+    badge.className = "credit-badge";
+    const remaining = limit - used;
+    if (remaining <= 0) {
+      badge.className = "credit-badge credit-empty";
+    } else if (remaining <= Math.ceil(limit * 0.25)) {
+      badge.className = "credit-badge credit-low";
+    }
+    badgeText.textContent = `${remaining} remaining`;
+
+    // Limit reached message
+    if (limitMsg) {
+      if (remaining <= 0) {
+        limitMsg.style.display = "flex";
+        const resetTime = "midnight";
+        limitText.textContent = `Daily query limit reached (${limit}/${limit}). Resets at ${resetTime}.`;
+      } else {
+        limitMsg.style.display = "none";
+      }
+    }
   }
 
   /* ─── Admin check ─── */

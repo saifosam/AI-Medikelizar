@@ -289,7 +289,20 @@ async def query(request: Request, body: QueryRequest):
         db.add(query_log)
         db.commit()
 
-        return result
+        # Include credit/usage info in the response so frontend can update indicators
+        from .subscriptions import get_user_daily_limit, get_queries_used_today
+        daily_limit = get_user_daily_limit(user, db)
+        used = get_queries_used_today(user, db)
+        credits = {
+            "used": used,
+            "limit": daily_limit,
+            "remaining": max(0, daily_limit - used),
+        }
+
+        # Add credits info to the response
+        result_dict = result.model_dump()
+        result_dict["credits"] = credits
+        return result_dict
     except HTTPException:
         raise
     except Exception as e:

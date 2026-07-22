@@ -79,6 +79,16 @@
         <!-- Clerk user button (shown when signed in) -->
         <div id="user-button" class="header-user-button"></div>
 
+        <!-- Credit indicator (nav) -->
+        <div class="credit-indicator" id="credit-indicator" style="display:none;" title="Queries used today">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+            <path d="M12 9v4"></path>
+            <path d="M12 17h.01"></path>
+          </svg>
+          <span class="credit-indicator-text" id="credit-indicator-text">5/5</span>
+        </div>
+
         <!-- Language switcher dropdown -->
         <div class="lang-dropdown" id="lang-dropdown">
           <div class="lang-dropdown-menu" id="lang-dropdown-menu" role="listbox" aria-label="Select language">
@@ -168,6 +178,21 @@
                   <polyline points="12 5 19 12 12 19"></polyline>
                 </svg>
               </button>
+            </div>
+
+            <!-- Credit badge (near input) -->
+            <div class="credit-badge" id="credit-badge" style="display:none;">
+              <span class="credit-badge-text" id="credit-badge-text">5 remaining</span>
+            </div>
+            <!-- Limit reached message (hidden by default) -->
+            <div class="limit-reached-msg" id="limit-reached-msg" style="display:none;" role="alert">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              <span class="limit-reached-text" id="limit-reached-text">Daily query limit reached. Resets at midnight.</span>
+              <a href="#pricing" class="limit-reached-link" data-nav>Upgrade plan</a>
             </div>
 
             <!-- Confidence selector -->

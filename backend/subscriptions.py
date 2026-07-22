@@ -1,12 +1,19 @@
 """
-AI-Medikelizar — Subscription System
-=====================================
-Paymob payment gateway integration for subscription billing (Egypt/MENA).
+AI-Medikelizar — Flexible Subscription System
+===============================================
+Tiered subscriptions with adjustable daily limits and EGP pricing.
 
 Tiers:
-  - Basic  (free):      5 queries/day
-  - Premium (EGP/mo):   50 queries/day, faster priority, detailed citations
-  - VIP    (EGP/mo):    unlimited queries, priority support, early access
+  - Basic  (free):      5 queries/day, fixed
+  - Premium (EGP/mo):   10–25 queries/day, user-adjustable
+  - VIP    (EGP/mo):    25–60 queries/day, user-adjustable
+
+Pricing Formula:
+  Base cost per query:  0.15 EGP
+  Monthly cost = daily_limit × 30 × 0.15 × margin_multiplier
+  - Premium margin: 1.33×  →  59.85 = round(10×30×0.15×1.33)
+  - VIP margin:     1.50×
+  Result rounded to nearest clean number.
 
 Payment Flow:
   1. User clicks "Subscribe" on pricing page
@@ -21,6 +28,7 @@ import hashlib
 import hmac
 import json
 import logging
+import math
 from datetime import datetime, date, timedelta
 from typing import Optional
 
@@ -38,12 +46,47 @@ log = logging.getLogger("ai-medikelizar.subscriptions")
 PAYMOB_BASE = "https://accept.paymob.com"
 
 
-# ── Subscription tier definitions ────────────────────
+# ── Pricing constants ────────────────────────────────
+COST_PER_QUERY_EGP = 0.15        # Base cost per query in EGP
+DAYS_PER_MONTH = 30
+PREMIUM_MARGIN = 1.33             # Premium margin multiplier
+VIP_MARGIN = 1.50                 # VIP margin multiplier
+
+# ── Tier ranges (min/max daily limit) ────────────────
+TIER_RANGES = {
+    "basic":    {"min": 5,  "max": 5},
+    "premium":  {"min": 10, "max": 25},
+    "vip":      {"min": 25, "max": 60},
+}
+
+
+def calculate_price_cents(daily_limit: int, tier: str) -> int:
+    """
+    Calculate monthly price in EGP cents for a given daily limit and tier.
+    Formula: daily_limit × 30 × 0.15 EGP × margin, rounded to clean number.
+    """
+    if tier == "basic" or daily_limit <= 0:
+        return 0
+    margin = PREMIUM_MARGIN if tier == "premium" else VIP_MARGIN
+    raw = daily_limit * DAYS_PER_MONTH * COST_PER_QUERY_EGP * margin
+    # Round to a "clean" number (nearest 5 or 10 depending on magnitude)
+    raw_egp = raw  # price in EGP
+    if raw_egp < 100:
+        rounded = round(raw_egp / 5) * 5       # nearest 5 EGP
+    else:
+        rounded = round(raw_egp / 10) * 10     # nearest 10 EGP
+    # Convert to cents
+    return int(round(rounded * 100))
+
+
+# ── Subscription tier definitions (backend) ──────────
 TIERS = {
     "basic": {
         "label": "Basic",
         "price_cents": 0,           # Free
-        "queries_per_day": 5,
+        "daily_limit_default": 5,
+        "daily_limit_min": 5,
+        "daily_limit_max": 5,
         "features": [
             "5 queries per day",
             "Standard response speed",
@@ -53,10 +96,12 @@ TIERS = {
     },
     "premium": {
         "label": "Premium",
-        "price_cents": config.PAYMOB_PREMIUM_PRICE_CENTS,   # e.g. 2999 = 29.99 EGP
-        "queries_per_day": 50,
+        "price_cents": calculate_price_cents(15, "premium"),  # Default shown on pricing page
+        "daily_limit_default": 15,
+        "daily_limit_min": 10,
+        "daily_limit_max": 25,
         "features": [
-            "50 queries per day",
+            "10–25 queries per day (adjustable)",
             "Faster response priority",
             "Detailed source citations",
             "Priority email support",
@@ -64,10 +109,12 @@ TIERS = {
     },
     "vip": {
         "label": "VIP",
-        "price_cents": config.PAYMOB_VIP_PRICE_CENTS,       # e.g. 8999 = 89.99 EGP
-        "queries_per_day": -1,  # unlimited
+        "price_cents": calculate_price_cents(40, "vip"),  # Default shown on pricing page
+        "daily_limit_default": 40,
+        "daily_limit_min": 25,
+        "daily_limit_max": 60,
         "features": [
-            "Unlimited queries",
+            "25–60 queries per day (adjustable)",
             "Fastest response priority",
             "Full source citations with abstracts",
             "Priority support (email + chat)",
@@ -248,7 +295,7 @@ def verify_webhook_signature(payload: bytes, hmac_header: str) -> bool:
 
 
 def get_tier_limits(tier: str) -> dict:
-    """Get the quota limits for a given tier."""
+    """Get the quota limits for a given tier. Returns daily_limit bounds."""
     return TIERS.get(tier, TIERS["basic"])
 
 
@@ -265,8 +312,30 @@ def get_user_tier(user: Optional[UserModel], db: Session) -> str:
     return "basic"
 
 
+def get_user_daily_limit(user: Optional[UserModel], db: Session) -> int:
+    """
+    Get the user's effective daily query limit.
+    - Basic: fixed 5/day
+    - Premium/VIP: stored daily_limit, or tier default if not set
+    """
+    if not user:
+        return 5  # Anonymous basic
+    tier = get_user_tier(user, db)
+    tier_info = TIERS.get(tier, TIERS["basic"])
+    if tier == "basic":
+        return tier_info["daily_limit_default"]
+    # For paid tiers, check stored daily_limit
+    sub = db.query(SubscriptionModel).filter(
+        SubscriptionModel.user_id == user.id,
+        SubscriptionModel.status == "active",
+    ).first()
+    if sub and sub.daily_limit is not None:
+        return max(tier_info["daily_limit_min"], min(sub.daily_limit, tier_info["daily_limit_max"]))
+    return tier_info["daily_limit_default"]
+
+
 def get_queries_used_today(user: UserModel, db: Session) -> int:
-    """Count queries used by the user today."""
+    """Count queries used by the user today (midnight-reset window)."""
     today_start = datetime.combine(date.today(), datetime.min.time())
     return db.query(QueryLogModel).filter(
         QueryLogModel.user_id == user.id,
@@ -276,22 +345,14 @@ def get_queries_used_today(user: UserModel, db: Session) -> int:
 
 def check_query_limit(user: Optional[UserModel], db: Session) -> bool:
     """
-    Check if the user can make a query based on their tier limit.
+    Check if the user can make a query based on their daily limit.
     Returns True if allowed, False if over the limit.
     """
-    tier = get_user_tier(user, db)
-    limits = get_tier_limits(tier)
-    queries_per_day = limits["queries_per_day"]
-
-    # Unlimited tier
-    if queries_per_day == -1:
-        return True
-
     if not user:
         return True  # Allow anonymous
-
+    daily_limit = get_user_daily_limit(user, db)
     used = get_queries_used_today(user, db)
-    return used < queries_per_day
+    return used < daily_limit
 
 
 def get_user_payment_type(user: UserModel, db: Session) -> str:
@@ -316,14 +377,32 @@ async def get_pricing():
     """Return the subscription tier definitions for the pricing page."""
     tiers = []
     for tier_id, tier_info in TIERS.items():
+        daily_limit = tier_info["daily_limit_default"]
         tiers.append({
             "id": tier_id,
             "label": tier_info["label"],
-            "price_cents": tier_info["price_cents"],
-            "queries_per_day": tier_info["queries_per_day"],
+            "price_cents": calculate_price_cents(daily_limit, tier_id),
+            "daily_limit": daily_limit,
+            "daily_limit_min": tier_info["daily_limit_min"],
+            "daily_limit_max": tier_info["daily_limit_max"],
             "features": tier_info["features"],
         })
     return {"tiers": tiers, "currency": "EGP"}
+
+
+@router.get("/pricing/calculate")
+async def calculate_price(tier: str = "premium", daily_limit: int = 15):
+    """
+    Live price calculation for the pricing slider.
+    Query params: tier, daily_limit
+    Returns: { price_cents, daily_limit, tier }
+    """
+    if tier not in TIERS or tier == "basic":
+        return {"price_cents": 0, "daily_limit": 5, "tier": "basic"}
+    tier_info = TIERS[tier]
+    clamped = max(tier_info["daily_limit_min"], min(daily_limit, tier_info["daily_limit_max"]))
+    price = calculate_price_cents(clamped, tier)
+    return {"price_cents": price, "daily_limit": clamped, "tier": tier}
 
 
 @router.get("/status")
@@ -331,11 +410,11 @@ async def get_subscription_status(
     user: Optional[UserModel] = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Return the user's current subscription details."""
+    """Return the user's current subscription details with daily limit info."""
     tier = get_user_tier(user, db)
-    limits = get_tier_limits(tier)
+    daily_limit = get_user_daily_limit(user, db) if user else 5
     queries_used = 0
-    queries_limit = limits["queries_per_day"]
+    queries_limit = daily_limit
 
     if user:
         queries_used = get_queries_used_today(user, db)
@@ -346,6 +425,9 @@ async def get_subscription_status(
             SubscriptionModel.user_id == user.id,
         ).order_by(SubscriptionModel.created_at.desc()).first()
 
+    # Get tier range info
+    tier_info = TIERS.get(tier, TIERS["basic"])
+
     return {
         "tier": tier,
         "status": sub.status if sub else "active",
@@ -354,6 +436,78 @@ async def get_subscription_status(
         "current_period_end": sub.current_period_end.isoformat() if sub and sub.current_period_end else None,
         "queries_used_today": queries_used,
         "queries_limit": queries_limit,
+        "daily_limit": daily_limit,
+        "daily_limit_min": tier_info["daily_limit_min"],
+        "daily_limit_max": tier_info["daily_limit_max"],
+        "price_cents": calculate_price_cents(daily_limit, tier),
+    }
+
+
+@router.get("/credits")
+async def get_credits(
+    user: Optional[UserModel] = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Return lightweight credit/usage info for real-time UI indicators.
+    Called frequently (after each query) — keep it fast.
+    """
+    if not user:
+        return {"used": 0, "limit": 5, "remaining": 5, "tier": "basic"}
+    tier = get_user_tier(user, db)
+    daily_limit = get_user_daily_limit(user, db)
+    used = get_queries_used_today(user, db)
+    remaining = max(0, daily_limit - used)
+    return {
+        "used": used,
+        "limit": daily_limit,
+        "remaining": remaining,
+        "tier": tier,
+    }
+
+
+@router.post("/update-limit")
+async def update_daily_limit(
+    request: Request,
+    user: UserModel = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Update the user's chosen daily query limit within their tier range.
+    Expects JSON body: { "daily_limit": 20 }
+    Only works for premium/vip tiers.
+    Resets usage count so the new limit takes effect immediately.
+    """
+    body = await request.json()
+    new_limit = body.get("daily_limit")
+    if not isinstance(new_limit, int) or new_limit < 1:
+        raise HTTPException(status_code=400, detail="daily_limit must be a positive integer")
+
+    tier = get_user_tier(user, db)
+    if tier not in TIERS or tier == "basic":
+        raise HTTPException(status_code=400, detail="Cannot change daily limit on Basic tier")
+
+    tier_info = TIERS[tier]
+    clamped = max(tier_info["daily_limit_min"], min(new_limit, tier_info["daily_limit_max"]))
+
+    sub = db.query(SubscriptionModel).filter(
+        SubscriptionModel.user_id == user.id,
+        SubscriptionModel.status == "active",
+    ).first()
+    if not sub:
+        raise HTTPException(status_code=400, detail="No active subscription found")
+
+    sub.daily_limit = clamped
+    sub.updated_at = datetime.utcnow()
+    db.commit()
+
+    new_price = calculate_price_cents(clamped, tier)
+    log.info(f"User {user.email} changed daily limit to {clamped} ({tier}, {new_price} EGP cents)")
+
+    return {
+        "tier": tier,
+        "daily_limit": clamped,
+        "price_cents": new_price,
     }
 
 
