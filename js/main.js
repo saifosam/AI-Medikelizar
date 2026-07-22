@@ -549,7 +549,8 @@
 
     const now = new Date();
     const lang = getCurrentLang();
-    timestampEl.textContent = `${__("results.generated")} ${now.toLocaleString(lang === "ar" ? "ar-EG" : "en-US", {
+    const localeStr = lang && lang !== "en" ? `${lang}-${lang.toUpperCase()}` : "en-US";
+    timestampEl.textContent = `${__("results.generated")} ${now.toLocaleString(localeStr, {
       month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit",
     })}`;
   }
@@ -1061,7 +1062,8 @@
     // Timestamp
     const now = new Date();
     const lang = getCurrentLang();
-    answerTimestamp.textContent = `${__("results.generated")} ${now.toLocaleString(lang === "ar" ? "ar-EG" : "en-US", {
+    const localeStr = lang && lang !== "en" ? `${lang}-${lang.toUpperCase()}` : "en-US";
+    answerTimestamp.textContent = `${__("results.generated")} ${now.toLocaleString(localeStr, {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -1133,6 +1135,20 @@
   }
 
   /* ─── Pricing page ─── */
+  /* ─── Helper: format price in detected local currency ─── */
+  function formatLocalPrice(priceCents) {
+    if (window.AICurrency && window.AICurrency.formatPriceCents) {
+      const currency = window.AICurrency.getCurrentCurrency();
+      try {
+        return window.AICurrency.formatPriceCents(priceCents, currency);
+      } catch (e) {
+        // Fallback to EGP display
+      }
+    }
+    // Fallback: EGP
+    return `EGP ${(priceCents / 100).toFixed(2)}`;
+  }
+
   let pricingSliderTier = null;
   let pricingSliderMin = 10;
   let pricingSliderMax = 25;
@@ -1270,7 +1286,7 @@
       const priceVal = pricingAnnual && !isFree
         ? Math.round(tier.price_cents * 0.8)
         : tier.price_cents;
-      const priceDisplay = isFree ? __("pricing.free") : `EGP ${(priceVal / 100).toFixed(2)}`;
+      const priceDisplay = isFree ? __("pricing.free") : formatLocalPrice(priceVal);
       const unit = isFree ? "" : pricingAnnual ? __("pricing.billedAnnually") : __("pricing.perMonth");
       const queriesDisplay = tier.queries_per_day === -1
         ? __("pricing.unlimited")
@@ -1399,16 +1415,29 @@
     if (!toggle || !dropdown) return;
 
     function renderLangMenu() {
-      const locales = (window.i18n && window.i18n.getLocales()) || [];
+      const i18n = window.i18n;
+      if (!i18n) return;
+      const codes = (i18n.getCommonLanguages && i18n.getCommonLanguages()) || ["en", "ar"];
       const current = getCurrentLang();
-      dropdown.innerHTML = locales.map(l => `
-        <button class="lang-option${l.code === current ? ' lang-option-active' : ''}"
-                data-lang="${l.code}" role="option" aria-selected="${l.code === current}">
-          <span class="lang-option-native">${l.nativeLabel}</span>
-          <span class="lang-option-label">${l.label}</span>
-        </button>
-      `).join("");
-      if (label) label.textContent = current.toUpperCase();
+      dropdown.innerHTML = codes.map(code => {
+        const info = i18n.getLocaleInfo ? i18n.getLocaleInfo(code) : { code, nativeLabel: code.toUpperCase(), label: code.toUpperCase() };
+        return `
+          <button class="lang-option${code === current ? ' lang-option-active' : ''}"
+                  data-lang="${code}" role="option" aria-selected="${code === current}">
+            <span class="lang-option-native">${info.nativeLabel}</span>
+            <span class="lang-option-label">${info.label}</span>
+          </button>
+        `;
+      }).join("");
+      if (label) {
+        const currentInfo = i18n.getLocaleInfo ? i18n.getLocaleInfo(current) : null;
+        label.textContent = currentInfo ? currentInfo.nativeLabel : current.toUpperCase();
+      }
+      // Update aria-label on the toggle button
+      if (toggle) {
+        const currentInfo = i18n.getLocaleInfo ? i18n.getLocaleInfo(current) : null;
+        toggle.setAttribute("aria-label", currentInfo ? `Language: ${currentInfo.label}` : `Language: ${current.toUpperCase()}`);
+      }
     }
 
     renderLangMenu();
@@ -1717,7 +1746,6 @@
     // Input badge
     badge.style.display = "flex";
     badge.className = "credit-badge";
-    const remaining = limit - used;
     if (remaining <= 0) {
       badge.className = "credit-badge credit-empty";
     } else if (remaining <= Math.ceil(limit * 0.25)) {
@@ -1942,6 +1970,16 @@
       window.i18n.translateDOM();
     }
 
+    // ── Currency system initialisation ──
+    if (window.AICurrency && window.AICurrency.init) {
+      window.AICurrency.init().then(() => {
+        // If pricing view is active, re-render with detected currency
+        if (state.currentView === "pricing") {
+          renderPricingCards();
+        }
+      });
+    }
+
     // Re-translate dynamic elements when locale changes
     document.addEventListener("localechange", () => {
       // Update theme toggle aria
@@ -1952,6 +1990,13 @@
         loadAdminDashboard();
       }
       // Re-translate pricing cards
+      if (state.currentView === "pricing") {
+        renderPricingCards();
+      }
+    });
+
+    // Re-render pricing when currency changes
+    document.addEventListener("currencychange", () => {
       if (state.currentView === "pricing") {
         renderPricingCards();
       }

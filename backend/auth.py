@@ -49,7 +49,7 @@ def verify_clerk_webhook(payload: bytes, sig_header: str) -> bool:
     """
     secret = config.CLERK_WEBHOOK_SECRET
     if not secret:
-        log.warning("CLERK_WEBHOOK_SECRET not set — skipping webhook verification")
+        log.warning("CLERK_WEBHOOK_SECRET not set - skipping webhook verification")
         return True
 
     try:
@@ -262,7 +262,7 @@ async def get_current_user(request: Request, db: Session = Depends(get_db)) -> O
 
         # ── User not found in DB — create on-the-fly from headers ──
         if not email:
-            log.warning(f"Clerk user {clerk_user_id} not in DB and no email header provided — cannot create")
+            log.warning(f"Clerk user {clerk_user_id} not in DB and no email header provided - cannot create")
             return None
 
         user = UserModel(

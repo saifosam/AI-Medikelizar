@@ -71,8 +71,8 @@ def require_env(name: str) -> str:
     """
     value = os.getenv(name)
     if not value:
-        print(f"  ❌  FATAL: Missing required environment variable: {name}", file=sys.stderr)
-        print(f"  💡  Set it in backend/.env or export it before starting.", file=sys.stderr)
+        print(f"  [MISSING]  FATAL: Missing required environment variable: {name}", file=sys.stderr)
+        print(f"  [TIP]  Set it in backend/.env or export it before starting.", file=sys.stderr)
         sys.exit(1)
     return value
 
@@ -125,30 +125,30 @@ def validate_startup_env() -> list[dict[str, str]]:
     for name, purpose in CRITICAL_ENV_VARS.items():
         value = os.getenv(name)
         if value:
-            statuses.append({"name": name, "status": "✅ set", "purpose": purpose})
+            statuses.append({"name": name, "status": "[SET]", "purpose": purpose})
         else:
-            statuses.append({"name": name, "status": "❌ MISSING", "purpose": purpose})
+            statuses.append({"name": name, "status": "[MISSING]", "purpose": purpose})
             missing_critical = True
 
     for name, purpose in OPTIONAL_ENV_VARS.items():
         value = os.getenv(name)
         if value:
-            statuses.append({"name": name, "status": "✅ set", "purpose": purpose})
+            statuses.append({"name": name, "status": "[SET]", "purpose": purpose})
         else:
-            statuses.append({"name": name, "status": "  —", "purpose": purpose})
+            statuses.append({"name": name, "status": "  -", "purpose": purpose})
 
     if missing_critical:
         print()
-        print("  ╔═══════════════════════════════════════════════════════════╗")
-        print("  ║  FATAL: Missing required environment variables           ║")
-        print("  ║  The server cannot start without these.                  ║")
-        print("  ╚═══════════════════════════════════════════════════════════╝")
+        print("  +-----------------------------------------------------------+")
+        print("  |  FATAL: Missing required environment variables           |")
+        print("  |  The server cannot start without these.                  |")
+        print("  +-----------------------------------------------------------+")
         print()
         for s in statuses:
-            if s["status"] == "❌ MISSING":
-                print(f"  {s['status']}  {s['name']:30s}  {s['purpose']}")
+            if s["status"] == "[MISSING]":
+                print(f"  [MISSING]  {s['name']:30s}  {s['purpose']}")
         print()
-        print(f"  💡  Create backend/.env or export the missing variables.")
+        print(f"  [TIP]  Create backend/.env or export the missing variables.")
         print()
         sys.exit(1)
 

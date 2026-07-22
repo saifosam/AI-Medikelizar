@@ -273,7 +273,7 @@ def verify_webhook_signature(payload: bytes, hmac_header: str) -> bool:
     Paymob calculates the HMAC over the raw request body using the webhook secret.
     """
     if not config.PAYMOB_WEBHOOK_SECRET:
-        log.warning("PAYMOB_WEBHOOK_SECRET not set — skipping webhook verification")
+        log.warning("PAYMOB_WEBHOOK_SECRET not set - skipping webhook verification")
         return True
 
     if not hmac_header:

@@ -9,10 +9,19 @@ Opens http://localhost:8000 in your browser automatically.
 """
 
 import os
+import sys
 import webbrowser
 
 import uvicorn
 from backend.main import app
+
+# Reconfigure stdout to UTF-8 on Windows to prevent UnicodeEncodeError
+# when printing non-ASCII characters to the terminal.
+if hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass  # Ignore if terminal doesn't support UTF-8
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", "8000"))

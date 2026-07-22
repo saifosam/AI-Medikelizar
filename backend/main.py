@@ -67,12 +67,12 @@ async def lifespan(app: FastAPI):
 
     # ── Print environment table (mirrors reference's markdown table) ──
     print()
-    print("  ╔══════════════════════════════════════════════════════════════════════╗")
-    print("  ║                 AI-Medikelizar — Environment Check                 ║")
-    print("  ╚══════════════════════════════════════════════════════════════════════╝")
+    print("  +------------------------------------------------------------------+")
+    print("  |              AI-Medikelizar — Environment Check                  |")
+    print("  +------------------------------------------------------------------+")
     print()
     print(f"  {'Variable':30s} {'Status':12s} {'Purpose'}")
-    print(f"  {'─' * 30} {'─' * 12} {'─' * 36}")
+    print(f"  {'-' * 30} {'-' * 12} {'-' * 36}")
     for s in env_statuses:
         print(f"  {s['name']:30s} {s['status']:12s} {s['purpose']}")
     print()
@@ -85,7 +85,7 @@ async def lifespan(app: FastAPI):
         log.error(f"Database initialization failed: {e}")
 
     # ── Startup banner ──
-    log.info("─" * 50)
+    log.info("-" * 50)
     log.info("AI-Medikelizar Backend starting")
     _provider = config.PROVIDER
     _key_attr = f"{_provider.upper()}_API_KEY"
@@ -98,14 +98,14 @@ async def lifespan(app: FastAPI):
     log.info(f"  Rate limit:    {'enabled' if config.RATE_LIMIT_ENABLED else 'disabled'}")
     log.info(f"  Admin emails:  {', '.join(config.ADMIN_EMAILS)}")
     log.info(f"  Payments:      {'Paymob configured' if config.PAYMOB_API_KEY else 'not configured'}")
-    log.info("─" * 50)
+    log.info("-" * 50)
 
     # ── Security flow diagram (mirrors reference architecture) ──
     log.info("  Security layers active:")
     log.info("    Layer 1  Clerk auth middleware  →  /api/auth/me, Bearer token")
     log.info("    Layer 2  Admin email whitelist  →  require_admin() dependency")
     log.info("    Layer 3  Client-side admin hide →  shield button shown only for admins")
-    log.info("  ─" * 17)
+    log.info("  -" * 17)
 
     yield
     log.info("Shutting down.")
@@ -351,6 +351,50 @@ async def get_current_user_info(request: Request):
         )
     finally:
         db.close()
+
+
+@app.get("/api/currency/rates")
+@limiter.limit("30/minute")
+async def get_currency_rates(request: Request):
+    """
+    Fetch live exchange rates from open.er-api.com (free, no API key needed).
+    Returns rates with EGP as base currency.
+    Cached server-side for 1 hour to avoid rate limits.
+    """
+    import time
+    import aiohttp
+    import asyncio
+
+    # Simple in-memory cache
+    cache_key = "egp_rates"
+    cache = getattr(get_currency_rates, "_cache", {})
+    now = time.time()
+
+    if cache_key in cache and now - cache[cache_key]["ts"] < 3600:
+        return cache[cache_key]["data"]
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                "https://open.er-api.com/v6/latest/EGP",
+                timeout=aiohttp.ClientTimeout(total=10),
+            ) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    # Cache result
+                    cache[cache_key] = {"data": data, "ts": now}
+                    get_currency_rates._cache = cache
+                    return data
+                else:
+                    # Return stale cache if available
+                    if cache_key in cache:
+                        return cache[cache_key]["data"]
+                    return {"result": "error", "base_code": "EGP", "rates": {"EGP": 1}}
+    except Exception as e:
+        log.warning(f"Failed to fetch exchange rates: {e}")
+        if cache_key in cache:
+            return cache[cache_key]["data"]
+        return {"result": "error", "base_code": "EGP", "rates": {"EGP": 1}}
 
 
 @app.post("/api/humanize")

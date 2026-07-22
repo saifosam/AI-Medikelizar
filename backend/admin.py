@@ -44,7 +44,7 @@ def _fetch_clerk_users(limit: int = 100, offset: int = 0) -> Optional[dict]:
       - Array:  [...] (direct JSON array — normalises to object format)
     """
     if not app_config.CLERK_SECRET_KEY:
-        log.info("CLERK_SECRET_KEY not set — cannot fetch Clerk users")
+        log.info("CLERK_SECRET_KEY not set - cannot fetch Clerk users")
         return None
 
     try:
@@ -179,7 +179,7 @@ async def dashboard(db: Session = Depends(get_db)):
                 elif sub.tier == "vip":
                     revenue_7d_cents += app_config.PAYMOB_VIP_PRICE_CENTS
         except Exception:
-            log.info("Subscription queries failed (table may not exist) — using defaults")
+            log.info("Subscription queries failed (table may not exist) - using defaults")
 
         # ── Recent users from local DB ──
         recent_users_raw = []
@@ -188,7 +188,7 @@ async def dashboard(db: Session = Depends(get_db)):
                 UserModel.created_at.desc()
             ).limit(20).all()
         except Exception:
-            log.info("User query failed — no recent users available")
+            log.info("User query failed - no recent users available")
 
         recent_users = []
         for u in recent_users_raw:
