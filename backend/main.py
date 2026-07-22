@@ -374,6 +374,13 @@ async def humanize_answer(request: Request, body: HumanizeRequest):
     # Normalise whitespace
     plain_text = re.sub(r'\s+', ' ', plain_text).strip()
 
+    # Map language codes to full names for the AI
+    LANG_MAP = {
+        "en": "English",
+        "ar": "Arabic",
+    }
+    target_lang = LANG_MAP.get(body.language, "English")
+
     # Build source list for context
     sources_text = ""
     for i, src in enumerate(body.sources or [], start=1):
@@ -396,13 +403,14 @@ async def humanize_answer(request: Request, body: HumanizeRequest):
         "   - Break long sentences into shorter, clearer ones\n"
         "   - Keep the same paragraph structure and headings\n"
         "6. Output ONLY the rewritten text — no prefixes, no explanations.\n"
+        f"7. You MUST write your entire answer in {target_lang}. The original text may be in a different language; translate it to {target_lang} while keeping all the medical facts exactly the same.\n"
     )
 
     try:
         provider = get_provider()
         humanized = await provider.complete(
             humanize_prompt,
-            "You are a medical writer who makes clinical content accessible to patients without changing any facts. "
+            f"You are a medical writer who rewrites clinical content in warm, plain {target_lang} without changing any facts. "
             "Preserve all citations, all claims, all certainty language — only change the tone."
         )
         humanized = humanized.strip().strip('"').strip("'")

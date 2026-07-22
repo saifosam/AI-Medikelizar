@@ -184,3 +184,4 @@ class HumanizeRequest(BaseModel):
     """Request to rewrite an answer in plain language."""
     answer: str  # The HTML answer to humanize
     sources: list[SourceModel] = []  # Source context for the humanizer
+    language: str = "en"  # Target language for the humanized output (e.g. "en", "ar")

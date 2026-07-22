@@ -633,7 +633,11 @@
       const resp = await fetch(`${API_BASE}/api/humanize`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answer: plainAnswer, sources }),
+        body: JSON.stringify({
+          answer: plainAnswer,
+          sources,
+          language: getCurrentLang(), // Pass the user's selected language
+        }),
         signal: AbortSignal.timeout(30000), // 30-second timeout
       });
 
