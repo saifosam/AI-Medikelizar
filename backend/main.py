@@ -274,9 +274,9 @@ async def query(request: Request, body: QueryRequest):
             log.info(f"NO CONTEXT: initial query")
 
         log.info(f"Query: {q[:80]}{'...' if len(q) > 80 else ''}  "
-                 f"[tier={tier}, confidence={confidence}, max_sources={preset['max_sources']}]")
+                 f"[tier={tier}, confidence={confidence}, max_sources={preset['max_sources']}, lang={body.language}]")
 
-        result = await run_pipeline(q, confidence=confidence, context=body.context)
+        result = await run_pipeline(q, confidence=confidence, context=body.context, language=body.language)
 
         # Log the query for usage tracking
         query_log = QueryLogModel(

@@ -92,6 +92,7 @@ class QueryRequest(BaseModel):
     query: str
     confidence: str = "medium"  # "low" | "medium" | "high"
     context: Optional[dict] = None  # For follow-up queries: { previousQuery, previousAnswer }
+    language: str = "en"  # Target language for the AI response (e.g. "en", "ar")
 
 
 class SourceModel(BaseModel):

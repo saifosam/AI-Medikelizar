@@ -22,7 +22,7 @@ from .ai_providers import get_provider, AIProviderError
 log = logging.getLogger("ai-medikelizar.rag")
 
 
-async def run_pipeline(query: str, confidence: str = "medium", context: dict = None) -> QueryResponse:
+async def run_pipeline(query: str, confidence: str = "medium", context: dict = None, language: str = "en") -> QueryResponse:
     """
     Execute the full RAG pipeline.
 
@@ -31,6 +31,7 @@ async def run_pipeline(query: str, confidence: str = "medium", context: dict = N
         confidence: Thoroughness level — "low" (fast), "medium" (balanced), "high" (thorough).
         context: Optional dict with prior conversation context for follow-up queries.
                  Keys: previousQuery, previousAnswer.
+        language: Target language code (e.g. "en", "ar") for the AI response.
 
     Returns:
         QueryResponse with answer HTML and source citations.
@@ -84,7 +85,7 @@ async def run_pipeline(query: str, confidence: str = "medium", context: dict = N
     sources = [SourceModel(**s) for s in raw_sources]
 
     # ── Step 2: Build the prompt ──────────────────────
-    prompt = _build_prompt(query, sources, temperature)
+    prompt = _build_prompt(query, sources, temperature, language)
 
     # ── Step 3: Call the AI provider ──────────────────
     try:
@@ -179,8 +180,15 @@ async def _rewrite_query(query: str, context: dict) -> str:
         return query
 
 
-def _build_prompt(query: str, sources: list[SourceModel], temperature: float = 0.3) -> str:
+def _build_prompt(query: str, sources: list[SourceModel], temperature: float = 0.3, language: str = "en") -> str:
     """Build the prompt with source context for the AI provider."""
+    # Map language codes to full names for the AI
+    LANG_MAP = {
+        "en": "English",
+        "ar": "Arabic",
+    }
+    target_lang = LANG_MAP.get(language, "English")
+
     confidence_note = (
         "Be concise and direct. Prioritise the most clinically relevant findings. "
         if temperature >= 0.5 else
@@ -211,7 +219,10 @@ def _build_prompt(query: str, sources: list[SourceModel], temperature: float = 0
         "Cite each claim with the source number in brackets, e.g. [1]. "
         "If multiple sources support a claim, cite all of them, e.g. [1][2]. "
         "If the evidence is insufficient, state that clearly. "
-        "Structure your answer with bold headings for each section."
+        "Structure your answer with bold headings for each section.\n"
+        f"\nIMPORTANT: You MUST write your entire answer in {target_lang}. "
+        "Translate all medical terminology accurately. "
+        f"If the user wrote their query in a different language, still respond in {target_lang}.\n"
     )
 
     return "\n".join(parts)

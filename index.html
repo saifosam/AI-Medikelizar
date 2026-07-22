@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="AI-Medikelizar — A clinical reference tool for evidence-based medical information grounded in trusted sources.">
+  <meta name="description" lang="ar" content="AI-Medikelizar — أداة مرجعية سريرية للمعلومات الطبية القائمة على الأدلة من مصادر موثوقة.">
   <title>AI-Medikelizar — Clinical Reference Tool</title>
 
   <!-- Inline script to prevent flash of wrong theme & hide app before Clerk loads -->
@@ -32,6 +33,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=Inter:wght@400;450;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <!-- Arabic font for RTL support -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="css/main.css">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='28' font-size='24'%3E⚕%3C/text%3E%3C/svg%3E">
@@ -42,9 +45,9 @@
   <div id="auth-screen" class="auth-screen">
     <div class="auth-container">
       <div class="auth-logo" aria-hidden="true">⚕</div>
-      <h1 class="auth-heading">AI-Medikelizar</h1>
-      <p class="auth-subtitle">Clinical Reference Tool</p>
-      <p class="auth-description">Sign in to access evidence-based medical information grounded in trusted sources.</p>
+      <h1 class="auth-heading" data-i18n="auth.heading">AI-Medikelizar</h1>
+      <p class="auth-subtitle" data-i18n="auth.subtitle">Clinical Reference Tool</p>
+      <p class="auth-description" data-i18n="auth.description">Sign in to access evidence-based medical information grounded in trusted sources.</p>
       <div id="sign-in" class="auth-sign-in"></div>
     </div>
   </div>
@@ -58,23 +61,29 @@
   <!-- ════════════════ DISCLAIMER BANNER ════════════════ -->
   <aside class="disclaimer-banner" role="note" aria-label="Medical disclaimer">
     <span class="disclaimer-icon" aria-hidden="true">⚠</span>
-    <p><strong>Not a substitute for professional medical advice.</strong> AI-Medikelizar synthesises information from trusted sources for educational reference only. Always consult a qualified healthcare provider for personal medical decisions.</p>
+    <p data-i18n="disclaimer"><strong>Not a substitute for professional medical advice.</strong> AI-Medikelizar synthesises information from trusted sources for educational reference only. Always consult a qualified healthcare provider for personal medical decisions.</p>
   </aside>
 
   <!-- ════════════════ HEADER ════════════════ -->
   <header class="site-header">
     <div class="header-inner">
-      <a href="#home" class="logo-link" data-nav>
+      <a          href="#home" class="logo-link" data-nav id="nav-logo-link">
         <span class="logo-mark" aria-hidden="true">⚕</span>
         <span class="logo-text">
           <span class="logo-name">AI-Medikelizar</span>
-          <span class="logo-tagline">Clinical Reference Tool</span>
+          <span class="logo-tagline" data-i18n="header.tagline">Clinical Reference Tool</span>
         </span>
       </a>
 
       <div class="header-controls">
         <!-- Clerk user button (shown when signed in) -->
         <div id="user-button" class="header-user-button"></div>
+
+        <!-- Language switcher dropdown -->
+        <div class="lang-dropdown" id="lang-dropdown">
+          <div class="lang-dropdown-menu" id="lang-dropdown-menu" role="listbox" aria-label="Select language">
+          </div>
+        </div>
 
         <!-- Admin shield button (hidden by default, shown for admins only) -->
         <a href="#admin" class="admin-shield-btn" id="admin-shield-btn" data-nav aria-label="Admin dashboard" title="Admin dashboard" style="display: none;">
@@ -83,6 +92,16 @@
             <path d="M9 12l2 2 4-4"></path>
           </svg>
         </a>
+
+        <!-- Language switcher -->
+        <button class="lang-toggle" id="lang-toggle" aria-label="Switch language" title="Switch language">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="2" y1="12" x2="22" y2="12"></line>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+          </svg>
+          <span class="lang-toggle-label" id="lang-toggle-label">EN</span>
+        </button>
 
         <button class="theme-toggle" id="theme-toggle" aria-label="Switch to dark mode" title="Switch to dark mode">
           <!-- Moon icon (light mode → click to go dark) -->
@@ -109,10 +128,10 @@
             <span class="nav-toggle-bar"></span>
           </button>
           <ul class="nav-list">
-            <li><a href="#home" class="nav-link active" data-nav>Query</a></li>
-            <li><a href="#pricing" class="nav-link" data-nav>Pricing</a></li>
-            <li><a href="#trusted-sources" class="nav-link" data-nav>Sources</a></li>
-            <li><a href="#about" class="nav-link" data-nav>About</a></li>
+            <li><a href="#home" class="nav-link active" data-nav data-i18n="nav.query">Query</a></li>
+            <li><a href="#pricing" class="nav-link" data-nav data-i18n="nav.pricing">Pricing</a></li>
+            <li><a href="#trusted-sources" class="nav-link" data-nav data-i18n="nav.sources">Sources</a></li>
+            <li><a href="#about" class="nav-link" data-nav data-i18n="nav.about">About</a></li>
             </ul>
         </nav>
       </div>
@@ -126,8 +145,8 @@
     <section id="home" class="view active" aria-label="Query page">
       <div class="view-inner query-view">
         <div class="query-hero">
-          <h1 class="query-heading">Ask a clinical question</h1>
-          <p class="query-subheading">Get answers grounded in peer-reviewed research and trusted health authorities.</p>
+          <h1 class="query-heading" data-i18n="home.heading">Ask a clinical question</h1>
+          <p class="query-subheading" data-i18n="home.subheading">Get answers grounded in peer-reviewed research and trusted health authorities.</p>
 
           <form id="query-form" class="query-form" role="search" aria-label="Health information search">
             <div class="search-bar">
@@ -140,8 +159,10 @@
                 autocomplete="off"
                 spellcheck="true"
                 aria-describedby="query-hint"
+                data-i18n="home.inputPlaceholder"
+                data-i18n-attr="placeholder"
               >
-              <button type="submit" class="query-submit" aria-label="Submit question">
+              <button type="submit" class="query-submit" aria-label="Submit question" data-i18n="home.submitLabel" data-i18n-attr="aria-label">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <line x1="5" y1="12" x2="19" y2="12"></line>
                   <polyline points="12 5 19 12 12 19"></polyline>
@@ -151,47 +172,47 @@
 
             <!-- Confidence selector -->
             <div class="confidence-selector" role="radiogroup" aria-label="Search thoroughness">
-              <span class="confidence-selector-label">Thoroughness:</span>
-              <label class="confidence-option" data-confidence="low" data-hint="Fewer sources, fastest response">
+              <span class="confidence-selector-label" data-i18n="home.thoroughnessLabel">Thoroughness:</span>
+              <label class="confidence-option" data-confidence="low" data-hint-key="home.fastHint">
                 <input type="radio" name="confidence" value="low" autocomplete="off">
                 <span class="confidence-option-indicator"></span>
                 <span class="confidence-option-text">
-                  <span class="confidence-option-name">Fast</span>
-                  <span class="confidence-option-desc">~3 sources</span>
+                  <span class="confidence-option-name" data-i18n="home.fast">Fast</span>
+                  <span class="confidence-option-desc" data-i18n="home.fastDesc">~3 sources</span>
                 </span>
               </label>
-              <label class="confidence-option" data-confidence="medium" data-hint="Balanced speed and thoroughness">
+              <label class="confidence-option" data-confidence="medium" data-hint-key="home.balancedHint">
                 <input type="radio" name="confidence" value="medium" checked autocomplete="off">
                 <span class="confidence-option-indicator"></span>
                 <span class="confidence-option-text">
-                  <span class="confidence-option-name">Balanced</span>
-                  <span class="confidence-option-desc">~6 sources</span>
+                  <span class="confidence-option-name" data-i18n="home.balanced">Balanced</span>
+                  <span class="confidence-option-desc" data-i18n="home.balancedDesc">~6 sources</span>
                 </span>
               </label>
-              <label class="confidence-option" data-confidence="high" data-hint="Most sources, slower but comprehensive">
+              <label class="confidence-option" data-confidence="high" data-hint-key="home.thoroughHint">
                 <input type="radio" name="confidence" value="high" autocomplete="off">
                 <span class="confidence-option-indicator"></span>
                 <span class="confidence-option-text">
-                  <span class="confidence-option-name">Thorough</span>
-                  <span class="confidence-option-desc">~12 sources</span>
+                  <span class="confidence-option-name" data-i18n="home.thorough">Thorough</span>
+                  <span class="confidence-option-desc" data-i18n="home.thoroughDesc">~12 sources</span>
                 </span>
               </label>
-              <span class="confidence-hint" id="confidence-hint" aria-live="polite">Balanced speed and thoroughness</span>
+              <span class="confidence-hint" id="confidence-hint" aria-live="polite" data-i18n="home.balancedHint">Balanced speed and thoroughness</span>
             </div>
 
-            <p id="query-hint" class="query-hint">Press <kbd>Enter</kbd> to search. Higher thoroughness = more sources, longer wait.</p>
+            <p id="query-hint" class="query-hint" data-i18n="home.searchHint">Press <kbd>Enter</kbd> to search. Higher thoroughness = more sources, longer wait.</p>
           </form>
         </div>
 
         <div class="examples-section">
-          <h2 class="section-label">Example queries</h2>
+          <h2 class="section-label" data-i18n="home.examplesHeading">Example queries</h2>
           <ul class="example-list">
             <li>
               <button type="button" class="example-btn" data-query="What is the recommended first-line pharmacotherapy for hypertension in adults according to JNC 8 guidelines?">
                 <span class="example-icon" aria-hidden="true">🫀</span>
                 <span class="example-text">
-                  <span class="example-title">Hypertension guidelines</span>
-                  <span class="example-desc">First-line pharmacotherapy per JNC 8</span>
+                  <span class="example-title" data-i18n="home.examples.hypertension.title">Hypertension guidelines</span>
+                  <span class="example-desc" data-i18n="home.examples.hypertension.desc">First-line pharmacotherapy per JNC 8</span>
                 </span>
               </button>
             </li>
@@ -199,8 +220,8 @@
               <button type="button" class="example-btn" data-query="What is the efficacy of mRNA COVID-19 vaccines against severe disease in immunocompromised patients?">
                 <span class="example-icon" aria-hidden="true">🦠</span>
                 <span class="example-text">
-                  <span class="example-title">COVID-19 vaccine efficacy</span>
-                  <span class="example-desc">mRNA vaccines in immunocompromised patients</span>
+                  <span class="example-title" data-i18n="home.examples.covid.title">COVID-19 vaccine efficacy</span>
+                  <span class="example-desc" data-i18n="home.examples.covid.desc">mRNA vaccines in immunocompromised patients</span>
                 </span>
               </button>
             </li>
@@ -208,8 +229,8 @@
               <button type="button" class="example-btn" data-query="What are the evidence-based screening recommendations for colorectal cancer from the USPSTF?">
                 <span class="example-icon" aria-hidden="true">🔬</span>
                 <span class="example-text">
-                  <span class="example-title">Colorectal cancer screening</span>
-                  <span class="example-desc">USPSTF recommendations</span>
+                  <span class="example-title" data-i18n="home.examples.cancer.title">Colorectal cancer screening</span>
+                  <span class="example-desc" data-i18n="home.examples.cancer.desc">USPSTF recommendations</span>
                 </span>
               </button>
             </li>
@@ -217,8 +238,8 @@
               <button type="button" class="example-btn" data-query="What is the association between HbA1c levels and microvascular complications in type 2 diabetes?">
                 <span class="example-icon" aria-hidden="true">🩸</span>
                 <span class="example-text">
-                  <span class="example-title">Diabetes &amp; HbA1c targets</span>
-                  <span class="example-desc">Microvascular complication risk</span>
+                  <span class="example-title" data-i18n="home.examples.diabetes.title">Diabetes &amp; HbA1c targets</span>
+                  <span class="example-desc" data-i18n="home.examples.diabetes.desc">Microvascular complication risk</span>
                 </span>
               </button>
             </li>
@@ -231,18 +252,17 @@
     <section id="results" class="view" aria-label="Search results">
       <div class="view-inner results-view">
 
-        <!-- Back link -->
-        <a href="#home" class="results-back" data-nav>
+        <!-- Back link -->          <a href="#home" class="results-back" data-nav>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="19" y1="12" x2="5" y2="12"></line>
             <polyline points="12 19 5 12 12 5"></polyline>
           </svg>
-          New query
+          <span data-i18n="results.newQuery">New query</span>
         </a>
 
         <!-- Query echo -->
         <div class="query-echo">
-          <span class="query-echo-label">Query</span>
+          <span class="query-echo-label" data-i18n="results.queryLabel">Query</span>
           <p class="query-echo-text" id="query-echo-text"></p>
         </div>
 
@@ -252,15 +272,15 @@
             <div class="answer-loading-dot-pulse">
               <span class="sr-only">Retrieving evidence and generating answer</span>
             </div>
-            <p class="answer-loading-text">Retrieving evidence from trusted sources…</p>
+            <p class="answer-loading-text" data-i18n="results.loadingMedium">Retrieving evidence from trusted sources…</p>
           </div>
 
           <div class="answer-content" id="answer-content" hidden>
             <div class="answer-header">
-              <h2 class="answer-title">Synthesis</h2>
+              <h2 class="answer-title" data-i18n="results.synthesis">Synthesis</h2>
               <span class="answer-confidence" id="answer-confidence">
                 <span class="confidence-dot" aria-hidden="true"></span>
-                <span class="confidence-label">Confidence</span>
+                <span class="confidence-label" data-i18n="results.confidence">Confidence</span>
                 <span class="confidence-value" id="confidence-value">High</span>
               </span>
             </div>
@@ -279,7 +299,7 @@
         <!-- Source cards -->
         <div class="sources-section" id="sources-section" hidden>
           <h2 class="section-label sources-section-label">
-            Sources
+            <span data-i18n="results.sourcesLabel">Sources</span>
             <span class="sources-count-badge" id="sources-count-badge">0</span>
           </h2>
           <div class="source-cards" id="source-cards">
@@ -303,8 +323,10 @@
               placeholder="Ask a follow-up or start a new topic…"
               autocomplete="off"
               spellcheck="true"
+              data-i18n="results.followupPlaceholder"
+              data-i18n-attr="placeholder"
             >
-            <button type="submit" class="followup-submit" aria-label="Submit follow-up">
+            <button type="submit" class="followup-submit" aria-label="Submit follow-up" data-i18n="results.submitFollowup" data-i18n-attr="aria-label">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <line x1="5" y1="12" x2="19" y2="12"></line>
                 <polyline points="12 5 19 12 12 19"></polyline>
@@ -318,8 +340,8 @@
     <!-- ──── TRUSTED SOURCES VIEW ──── -->
     <section id="trusted-sources" class="view" aria-label="Trusted sources page">
       <div class="view-inner sources-page">
-        <h1 class="page-heading">Trusted sources</h1>
-        <p class="page-subheading">Every answer from AI-Medikelizar is grounded in evidence from these authoritative databases and health organisations. We index only publicly available, peer-reviewed, or government-vetted content.</p>
+        <h1 class="page-heading" data-i18n="sources.heading">Trusted sources</h1>
+        <p class="page-subheading" data-i18n="sources.subheading">Every answer from AI-Medikelizar is grounded in evidence from these authoritative databases and health organisations. We index only publicly available, peer-reviewed, or government-vetted content.</p>
 
         <div class="source-grid">
           <article class="source-card-detail">
@@ -464,9 +486,9 @@
         </div>
 
         <div class="source-note">
-          <h2>How we use these sources</h2>
-          <p>When you submit a query, AI-Medikelizar searches across the above databases using semantic retrieval to identify the most relevant and authoritative content. Our AI then synthesises a response grounded exclusively in the retrieved evidence — never from its internal training data alone.</p>
-          <p>Every claim in an answer is linked to at least one source citation. You can expand any citation to view the full reference details and access the original publication. We are transparent about the evidence behind every answer.</p>
+          <h2 data-i18n="sources.noteHeading">How we use these sources</h2>
+          <p data-i18n="sources.noteP1">When you submit a query, AI-Medikelizar searches across the above databases using semantic retrieval to identify the most relevant and authoritative content. Our AI then synthesises a response grounded exclusively in the retrieved evidence — never from its internal training data alone.</p>
+          <p data-i18n="sources.noteP2">Every claim in an answer is linked to at least one source citation. You can expand any citation to view the full reference details and access the original publication. We are transparent about the evidence behind every answer.</p>
         </div>
       </div>
     </section>
@@ -474,64 +496,64 @@
     <!-- ──── ABOUT VIEW ──── -->
     <section id="about" class="view" aria-label="About page">
       <div class="view-inner about-page">
-        <h1 class="page-heading">About AI-Medikelizar</h1>
+        <h1 class="page-heading" data-i18n="about.heading">About AI-Medikelizar</h1>
 
         <div class="about-content">
           <section class="about-section">
-            <h2>Our mission</h2>
-            <p>AI-Medikelizar exists to make evidence-based medical knowledge more accessible to clinicians, researchers, and informed patients. We believe that access to reliable, cited health information is a cornerstone of informed decision-making.</p>
-            <p>The tool is designed as a clinical reference — not a diagnostic aid, not a treatment planner, and never a substitute for professional judgement. Every answer points back to the source it came from, so you can verify, read in context, and draw your own conclusions.</p>
+            <h2 data-i18n="about.missionTitle">Our mission</h2>
+            <p data-i18n="about.missionP1">AI-Medikelizar exists to make evidence-based medical knowledge more accessible to clinicians, researchers, and informed patients. We believe that access to reliable, cited health information is a cornerstone of informed decision-making.</p>
+            <p data-i18n="about.missionP2">The tool is designed as a clinical reference — not a diagnostic aid, not a treatment planner, and never a substitute for professional judgement. Every answer points back to the source it came from, so you can verify, read in context, and draw your own conclusions.</p>
           </section>
 
           <section class="about-section">
-            <h2>The trust model</h2>
+            <h2 data-i18n="about.trustTitle">The trust model</h2>
             <div class="trust-model-grid">
               <div class="trust-model-card">
-                <h3>Source-restricted retrieval</h3>
-                <p>Our retrieval system searches only the pre-indexed trusted databases listed on our <a href="#trusted-sources" data-nav>Sources page</a>. We do not draw from unfiltered web content, forums, or unverified repositories.</p>
+                <h3 data-i18n="about.trustCards.0.title">Source-restricted retrieval</h3>
+                <p data-i18n="about.trustCards.0.text">Our retrieval system searches only the pre-indexed trusted databases listed on our <a href="#trusted-sources" data-nav>Sources page</a>. We do not draw from unfiltered web content, forums, or unverified repositories.</p>
               </div>
               <div class="trust-model-card">
-                <h3>Citation-anchored generation</h3>
-                <p>The AI model is instructed to compose answers using only the retrieved source text. Every factual statement is tied to a citation marker <sup>[1]</sup>, <sup>[2]</sup> referencing a specific source card.</p>
+                <h3 data-i18n="about.trustCards.1.title">Citation-anchored generation</h3>
+                <p data-i18n="about.trustCards.1.text">The AI model is instructed to compose answers using only the retrieved source text. Every factual statement is tied to a citation marker <sup>[1]</sup>, <sup>[2]</sup> referencing a specific source card.</p>
               </div>
               <div class="trust-model-card">
-                <h3>Human-reviewable evidence</h3>
-                <p>Every source card includes the publication title, authors, journal or publisher, date, and a direct link to the original. You can always read the source for yourself.</p>
+                <h3 data-i18n="about.trustCards.2.title">Human-reviewable evidence</h3>
+                <p data-i18n="about.trustCards.2.text">Every source card includes the publication title, authors, journal or publisher, date, and a direct link to the original. You can always read the source for yourself.</p>
               </div>
               <div class="trust-model-card">
-                <h3>Transparent limitations</h3>
-                <p>We clearly communicate confidence levels, date ranges of indexed content, and gaps in coverage. No answer is presented as definitive — medicine is an evolving field.</p>
+                <h3 data-i18n="about.trustCards.3.title">Transparent limitations</h3>
+                <p data-i18n="about.trustCards.3.text">We clearly communicate confidence levels, date ranges of indexed content, and gaps in coverage. No answer is presented as definitive — medicine is an evolving field.</p>
               </div>
             </div>
           </section>
 
           <section class="about-section">
-            <h2>Technical approach</h2>
-            <p>AI-Medikelizar uses a retrieval-augmented generation (RAG) pipeline. When you ask a question, embeddings of your query are used to semantically search a curated corpus of medical literature. The most relevant passages are retrieved and passed to a large language model, which is instructed to:</p>
+            <h2 data-i18n="about.techTitle">Technical approach</h2>
+            <p data-i18n="about.techP">AI-Medikelizar uses a retrieval-augmented generation (RAG) pipeline. When you ask a question, embeddings of your query are used to semantically search a curated corpus of medical literature. The most relevant passages are retrieved and passed to a large language model, which is instructed to:</p>
             <ul>
-              <li>Answer only from the provided source text</li>
-              <li>Mark every claim with an inline citation to its source passage</li>
-              <li>Explicitly state when the retrieved evidence is insufficient to answer</li>
-              <li>Never fabricate references or infer beyond what the sources say</li>
+              <li data-i18n="about.techItems.0">Answer only from the provided source text</li>
+              <li data-i18n="about.techItems.1">Mark every claim with an inline citation to its source passage</li>
+              <li data-i18n="about.techItems.2">Explicitly state when the retrieved evidence is insufficient to answer</li>
+              <li data-i18n="about.techItems.3">Never fabricate references or infer beyond what the sources say</li>
             </ul>
           </section>
 
           <section class="about-section">
-            <h2>Intended use</h2>
-            <p>This tool is designed for:</p>
+            <h2 data-i18n="about.intendedTitle">Intended use</h2>
+            <p data-i18n="about.intendedP">This tool is designed for:</p>
             <ul>
-              <li><strong>Healthcare professionals</strong> seeking a quick synthesis of current evidence on a specific clinical question</li>
-              <li><strong>Researchers</strong> exploring a new topic area and looking for key papers</li>
-              <li><strong>Patients and caregivers</strong> who want to better understand a condition or treatment from authoritative sources — in consultation with their healthcare team</li>
+              <li data-i18n="about.intendedItems.0"><strong>Healthcare professionals</strong> seeking a quick synthesis of current evidence on a specific clinical question</li>
+              <li data-i18n="about.intendedItems.1"><strong>Researchers</strong> exploring a new topic area and looking for key papers</li>
+              <li data-i18n="about.intendedItems.2"><strong>Patients and caregivers</strong> who want to better understand a condition or treatment from authoritative sources — in consultation with their healthcare team</li>
             </ul>
-            <p>It is <strong>not</strong> designed for emergency medical questions, diagnostic decision-making, or as a replacement for clinical judgement.</p>
+            <p data-i18n="about.intendedNote">It is <strong>not</strong> designed for emergency medical questions, diagnostic decision-making, or as a replacement for clinical judgement.</p>
           </section>
 
           <section class="about-section disclaimer-section">
-            <h2>Disclaimer</h2>
+            <h2 data-i18n="about.disclaimerTitle">Disclaimer</h2>
             <div class="disclaimer-box" role="note">
-              <p><strong>AI-Medikelizar is for informational and educational purposes only.</strong> The content generated by this tool does not constitute medical advice, diagnosis, or treatment. Always seek the advice of your physician or other qualified health provider with any questions you may have regarding a medical condition or treatment. Never disregard professional medical advice or delay in seeking it because of something you have read on this site.</p>
-              <p>If you think you may have a medical emergency, call your doctor or 911 immediately. AI-Medikelizar does not recommend or endorse any specific tests, physicians, products, procedures, opinions, or other information that may be referenced in generated responses.</p>
+              <p data-i18n="about.disclaimerP1"><strong>AI-Medikelizar is for informational and educational purposes only.</strong> The content generated by this tool does not constitute medical advice, diagnosis, or treatment. Always seek the advice of your physician or other qualified health provider with any questions you may have regarding a medical condition or treatment. Never disregard professional medical advice or delay in seeking it because of something you have read on this site.</p>
+              <p data-i18n="about.disclaimerP2">If you think you may have a medical emergency, call your doctor or 911 immediately. AI-Medikelizar does not recommend or endorse any specific tests, physicians, products, procedures, opinions, or other information that may be referenced in generated responses.</p>
             </div>
           </section>
         </div>
@@ -541,17 +563,17 @@
     <!-- ──── PRICING VIEW ──── -->
     <section id="pricing" class="view" aria-label="Pricing page">
       <div class="view-inner pricing-page">
-        <div class="pricing-header">
-          <h1 class="page-heading">Simple, transparent pricing</h1>
-          <p class="page-subheading">Choose the plan that fits your needs. All plans include access to evidence-based medical information from trusted sources. Upgrade anytime.</p>
+        <div class="pricing-header" id="pricing-header-text">
+          <h1 class="page-heading" data-i18n="pricing.heading">Simple, transparent pricing</h1>
+          <p class="page-subheading" data-i18n="pricing.subheading">Choose the plan that fits your needs. All plans include access to evidence-based medical information from trusted sources. Upgrade anytime.</p>
         </div>
 
         <div class="pricing-toggle">
-          <span class="pricing-toggle-label pricing-toggle-label-active" id="pricing-period-monthly">Monthly</span>
+          <span class="pricing-toggle-label pricing-toggle-label-active" id="pricing-period-monthly" data-i18n="pricing.monthly">Monthly</span>
           <button class="pricing-toggle-btn" id="pricing-period-toggle" role="switch" aria-checked="false" aria-label="Toggle annual billing">
             <span class="pricing-toggle-thumb"></span>
           </button>
-          <span class="pricing-toggle-label" id="pricing-period-annual">Annual <span class="pricing-toggle-save">Save 20%</span></span>
+          <span class="pricing-toggle-label" id="pricing-period-annual"><span data-i18n="pricing.annual">Annual</span> <span class="pricing-toggle-save" data-i18n="pricing.save">Save 20%</span></span>
         </div>
 
         <div class="pricing-grid" id="pricing-grid">
@@ -559,23 +581,23 @@
         </div>
 
         <div class="pricing-faq">
-          <h2 class="section-label">Frequently asked questions</h2>
+          <h2 class="section-label" data-i18n="pricing.faqHeading">Frequently asked questions</h2>
           <div class="faq-list">
             <details class="faq-item">
-              <summary>Can I upgrade or downgrade my plan?</summary>
-              <p>Yes, you can upgrade or downgrade at any time. Changes take effect immediately. If you downgrade, the new limits apply at the start of your next billing cycle.</p>
+              <summary data-i18n="pricing.faq.0.q">Can I upgrade or downgrade my plan?</summary>
+              <p data-i18n="pricing.faq.0.a">Yes, you can upgrade or downgrade at any time. Changes take effect immediately. If you downgrade, the new limits apply at the start of your next billing cycle.</p>
             </details>
             <details class="faq-item">
-              <summary>What happens when I reach my daily query limit?</summary>
-              <p>If you reach your daily limit, you can upgrade to a higher tier for more queries, or wait until the next day when your quota resets.</p>
+              <summary data-i18n="pricing.faq.1.q">What happens when I reach my daily query limit?</summary>
+              <p data-i18n="pricing.faq.1.a">If you reach your daily limit, you can upgrade to a higher tier for more queries, or wait until the next day when your quota resets.</p>
             </details>
             <details class="faq-item">
-              <summary>Can I cancel my subscription?</summary>
-              <p>Yes, you can cancel anytime through your account settings. Your access continues until the end of the current billing period.</p>
+              <summary data-i18n="pricing.faq.2.q">Can I cancel my subscription?</summary>
+              <p data-i18n="pricing.faq.2.a">Yes, you can cancel anytime through your account settings. Your access continues until the end of the current billing period.</p>
             </details>
             <details class="faq-item">
-              <summary>Is there a free trial for paid plans?</summary>
-              <p>Yes, all paid plans come with a 7-day free trial. You won't be charged until the trial period ends.</p>
+              <summary data-i18n="pricing.faq.3.q">Is there a free trial for paid plans?</summary>
+              <p data-i18n="pricing.faq.3.a">Yes, all paid plans come with a 7-day free trial. You won't be charged until the trial period ends.</p>
             </details>
           </div>
         </div>
@@ -597,7 +619,7 @@
       <div class="view-inner admin-page">
         <div class="admin-header">
           <div>
-            <h1 class="page-heading">Admin Dashboard</h1>
+            <h1 class="page-heading" data-i18n="admin.heading">Admin Dashboard</h1>
             <p class="page-subheading" id="admin-last-refresh"></p>
           </div>
           <button class="btn btn-secondary" id="admin-refresh-btn">
@@ -661,7 +683,7 @@
                 </tr>
               </thead>
               <tbody id="admin-users-body">
-                <tr><td colspan="6" class="admin-table-empty">Loading…</td></tr>
+                <tr><td colspan="6" class="admin-table-empty" data-i18n="admin.loading">Loading…</td></tr>
               </tbody>
             </table>
           </div>
@@ -702,20 +724,20 @@
   <footer class="site-footer">
     <div class="footer-inner">
       <div class="footer-col">
-        <span class="footer-logo">⚕ AI-Medikelizar</span>
-        <p class="footer-tagline">Evidence-based clinical reference tool.</p>
+        <span class="footer-logo">⚕ <span data-i18n="footer.logo">AI-Medikelizar</span></span>
+        <p class="footer-tagline" data-i18n="footer.tagline">Evidence-based clinical reference tool.</p>
       </div>
       <div class="footer-col">
-        <h3 class="footer-heading">Navigate</h3>
+        <h3 class="footer-heading" data-i18n="footer.navHeading">Navigate</h3>
         <ul class="footer-links">
-          <li><a href="#home" data-nav>Query</a></li>
-          <li><a href="#pricing" data-nav>Pricing</a></li>
-          <li><a href="#trusted-sources" data-nav>Trusted sources</a></li>
-          <li><a href="#about" data-nav>About</a></li>
+          <li><a href="#home" data-nav><span data-i18n="nav.query">Query</span></a></li>
+          <li><a href="#pricing" data-nav><span data-i18n="nav.pricing">Pricing</span></a></li>
+          <li><a href="#trusted-sources" data-nav><span data-i18n="nav.sources">Sources</span></a></li>
+          <li><a href="#about" data-nav><span data-i18n="nav.about">About</span></a></li>
         </ul>
       </div>
       <div class="footer-col">
-        <h3 class="footer-heading">Resources</h3>
+        <h3 class="footer-heading" data-i18n="footer.resourcesHeading">Resources</h3>
         <ul class="footer-links">
           <li><a href="https://pubmed.ncbi.nlm.nih.gov/" target="_blank" rel="noopener noreferrer">PubMed</a></li>
           <li><a href="https://www.cdc.gov/" target="_blank" rel="noopener noreferrer">CDC</a></li>
@@ -723,11 +745,11 @@
         </ul>
       </div>
       <div class="footer-col">
-        <p class="footer-disclaimer">This tool does not provide medical advice. See the <a href="#about" data-nav>About page</a> for full disclaimer.</p>
+        <p class="footer-disclaimer" data-i18n="footer.disclaimer">This tool does not provide medical advice. See the <a href="#about" data-nav>About page</a> for full disclaimer.</p>
       </div>
     </div>
     <div class="footer-bottom">
-      <p>&copy; <time id="footer-year">2026</time> AI-Medikelizar. Not a substitute for professional medical advice.</p>
+      <p data-i18n="footer.copyright">© <time id="footer-year">2026</time> AI-Medikelizar. Not a substitute for professional medical advice.</p>
     </div>
   </footer>
 
@@ -763,6 +785,19 @@
       console.log("AI-Medikelizar: No config.js found. Using defaults. Create js/config.js from js/config.example.js to customise.");
     }
   </script>
+
+  <!-- Internationalisation (i18n) system -->
+  <script src="js/i18n.js"></script>
+
+  <!-- i18n system init (runs before main.js) -->
+  <script>
+    (async function() {
+      if (window.i18n && window.i18n.init) {
+        await window.i18n.init();
+      }
+    })();
+  </script>
+
   <script src="js/main.js"></script>
 
   <!-- Clerk auth init (runs after everything loads) -->

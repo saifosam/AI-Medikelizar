@@ -18,6 +18,15 @@
     ? "http://localhost:8000"
     : "";    // same origin → relative URLs work
 
+  /* ─── i18n helper (safe fallback if i18n.js not loaded) ─── */
+  function __(key, params) {
+    if (window.i18n && window.i18n.__) return window.i18n.__(key, params);
+    return key;
+  }
+  function getCurrentLang() {
+    return (window.i18n && window.i18n.getCurrentLocale()) || "en";
+  }
+
   /* ─── State ─── */
   const state = {
     currentView: "home",
@@ -181,12 +190,12 @@
   }
 
   function updateConfidenceHint(value) {
-    const hints = {
-      low: "Fewer sources, fastest response",
-      medium: "Balanced speed and thoroughness",
-      high: "Most sources, slower but comprehensive",
+    const hintKeys = {
+      low: "home.fastHint",
+      medium: "home.balancedHint",
+      high: "home.thoroughHint",
     };
-    if (confidenceHint) confidenceHint.textContent = hints[value] || "";
+    if (confidenceHint) confidenceHint.textContent = __(hintKeys[value]) || "";
 
     // Update active label styling
     confidenceOptions.forEach((opt) => {
@@ -246,12 +255,12 @@
     // Show confidence-aware loading message
     const loadingText = answerLoading.querySelector(".answer-loading-text");
     if (loadingText) {
-      const loadingMsgs = {
-        low: "Quick search in progress…",
-        medium: "Retrieving evidence from trusted sources…",
-        high: "Thorough search underway — this may take a moment…",
+      const loadingKeys = {
+        low: "results.loadingQuick",
+        medium: "results.loadingMedium",
+        high: "results.loadingThorough",
       };
-      loadingText.textContent = loadingMsgs[confidence] || loadingMsgs.medium;
+      loadingText.textContent = __(loadingKeys[confidence]) || __("results.loadingMedium");
     }
 
     // Show loading
@@ -302,35 +311,35 @@
     entry.id = `followup-entry-${entryIdx}`;
     entry.innerHTML = `
       <div class="query-echo">
-        <span class="query-echo-label">Follow-up</span>
+        <span class="query-echo-label">${__("results.followUpLabel")}</span>
         <p class="query-echo-text">${escapeHtml(query)}</p>
       </div>
       <div class="answer-area">
         <div class="answer-loading" aria-live="polite">
           <div class="answer-loading-dot-pulse">
-            <span class="sr-only">Retrieving evidence and generating answer</span>
+            <span class="sr-only">${__("results.searching")}</span>
           </div>
-          <p class="answer-loading-text">Retrieving evidence for follow-up…</p>
+          <p class="answer-loading-text">${__("results.loadingFollowup")}</p>
         </div>
         <div class="answer-content" hidden>
           <div class="answer-header">
-            <h2 class="answer-title">Synthesis</h2>
+            <h2 class="answer-title">${__("results.synthesis")}</h2>
             <span class="answer-confidence">
               <span class="confidence-dot" aria-hidden="true"></span>
-              <span class="confidence-label">Confidence</span>
-              <span class="confidence-value">High</span>
+              <span class="confidence-label">${__("results.confidence")}</span>
+              <span class="confidence-value">${__("results.high")}</span>
             </span>
           </div>
           <div class="answer-body"></div>
           <div class="answer-meta">
-            <span class="answer-date">Generated <time datetime=""></time></span>
+            <span class="answer-date">${__("results.generated")} <time datetime=""></time></span>
             <span class="answer-sources-count"></span>
           </div>
         </div>
       </div>
       <div class="sources-section" hidden>
         <h2 class="section-label sources-section-label">
-          Sources
+          ${__("results.sourcesLabel")}
           <span class="sources-count-badge">0</span>
         </h2>
         <div class="source-cards"></div>
@@ -399,9 +408,7 @@
     const sourcesCountBadge = entry.querySelector(".sources-count-badge");
     const answerSourcesCount = entry.querySelector(".answer-sources-count");
     const confidenceValue = entry.querySelector(".confidence-value");
-    const answerTimestamp = entry.querySelector("time");
-
-    const answerHtml = data.answer || "<p>No answer returned.</p>";
+    const answerTimestamp = entry.querySelector("time");      const answerHtml = data.answer || `<p>${__("results.noAnswer")}</p>`;
     const sources = (data.sources || []).map((s, i) => ({
       id: s.id || i + 1,
       title: s.title || "Untitled",
@@ -494,10 +501,10 @@
           <div class="source-card-extras">
             <span>PMID: ${s.pmid}</span>
             <span>DOI: ${s.doi}</span>
-            <span>Relevance: ${Math.round(s.relevance * 100)}%</span>
+            <span>${__("results.relevance")}: ${Math.round(s.relevance * 100)}%</span>
           </div>
           <a href="${s.url}" target="_blank" rel="noopener noreferrer" class="source-card-link">
-            View on PubMed <span aria-hidden="true">↗</span>
+            ${__("results.viewOnPubMed")} <span aria-hidden="true">↗</span>
           </a>
         </div>
       </div>
@@ -518,25 +525,26 @@
   /* ─── Update meta in a specific entry ─── */
   function updateMetaInEntry(countBadge, sourcesCountEl, confidenceValEl, timestampEl, sources) {
     countBadge.textContent = sources.length;
-    sourcesCountEl.textContent = `${sources.length} source${sources.length !== 1 ? "s" : ""}`;
+    sourcesCountEl.textContent = `${sources.length} ${__("results.source")}${sources.length !== 1 ? "s" : ""}`;
 
     const maxRelevance = Math.max(...sources.map((s) => s.relevance));
     const dot = confidenceValEl.closest(".answer-confidence").querySelector(".confidence-dot");
     if (maxRelevance >= 0.9) {
-      confidenceValEl.textContent = "High";
+      confidenceValEl.textContent = __("results.high");
       if (dot) dot.className = "confidence-dot";
     } else if (maxRelevance >= 0.75) {
-      confidenceValEl.textContent = "Moderate";
+      confidenceValEl.textContent = __("results.moderate");
       if (dot) dot.className = "confidence-dot medium";
     } else {
-      confidenceValEl.textContent = "Limited";
+      confidenceValEl.textContent = __("results.limited");
       if (dot) dot.className = "confidence-dot lower";
     }
 
     const now = new Date();
-    timestampEl.textContent = now.toLocaleString("en-US", {
+    const lang = getCurrentLang();
+    timestampEl.textContent = `${__("results.generated")} ${now.toLocaleString(lang === "ar" ? "ar-EG" : "en-US", {
       month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit",
-    });
+    })}`;
   }
 
   /* ─── Generate follow-up demo answer ─── */
@@ -607,7 +615,7 @@
       const resp = await fetch(`${API_BASE}/api/query`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, confidence, context }),
+        body: JSON.stringify({ query, confidence, context, language: getCurrentLang() }),
         signal: AbortSignal.timeout(120000), // 2-minute timeout
       });
 
@@ -632,9 +640,7 @@
 
   /* ─── Display a result from the backend API ─── */
   function displayBackendResult(data) {
-    answerContent.hidden = false;
-
-    const answerHtml = data.answer || "<p>No answer returned.</p>";
+    answerContent.hidden = false;      const answerHtml = data.answer || `<p>${__("results.noAnswer")}</p>`;
     const sources = (data.sources || []).map((s, i) => ({
       id: s.id || i + 1,
       title: s.title || "Untitled",
@@ -781,10 +787,10 @@
           <div class="source-card-extras">
             <span>PMID: ${s.pmid}</span>
             <span>DOI: ${s.doi}</span>
-            <span>Relevance: ${Math.round(s.relevance * 100)}%</span>
+            <span>${__("results.relevance")}: ${Math.round(s.relevance * 100)}%</span>
           </div>
           <a href="${s.url}" target="_blank" rel="noopener noreferrer" class="source-card-link">
-            View on PubMed <span aria-hidden="true">↗</span>
+            ${__("results.viewOnPubMed")} <span aria-hidden="true">↗</span>
           </a>
         </div>
       </div>
@@ -824,31 +830,32 @@
   /* ─── Update meta info ─── */
   function updateMeta(sources) {
     sourcesCountBadge.textContent = sources.length;
-    answerSourcesCount.textContent = `${sources.length} source${sources.length !== 1 ? "s" : ""}`;
+    answerSourcesCount.textContent = `${sources.length} ${__("results.source")}${sources.length !== 1 ? "s" : ""}`;
 
     // Set confidence based on highest relevance
     const maxRelevance = Math.max(...sources.map((s) => s.relevance));
     const dot = document.querySelector(".confidence-dot");
     if (maxRelevance >= 0.9) {
-      confidenceValue.textContent = "High";
+      confidenceValue.textContent = __("results.high");
       dot.className = "confidence-dot";
     } else if (maxRelevance >= 0.75) {
-      confidenceValue.textContent = "Moderate";
+      confidenceValue.textContent = __("results.moderate");
       dot.className = "confidence-dot medium";
     } else {
-      confidenceValue.textContent = "Limited";
+      confidenceValue.textContent = __("results.limited");
       dot.className = "confidence-dot lower";
     }
 
     // Timestamp
     const now = new Date();
-    answerTimestamp.textContent = now.toLocaleString("en-US", {
+    const lang = getCurrentLang();
+    answerTimestamp.textContent = `${__("results.generated")} ${now.toLocaleString(lang === "ar" ? "ar-EG" : "en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-    });
+    })}`;
   }
 
   /* ─── Keyboard shortcuts ─── */
@@ -896,9 +903,9 @@
   /** Update toggle button aria-label and title based on current theme */
   function updateToggleAria(themeToggle, currentTheme) {
     const nextTheme = currentTheme === "dark" ? "light" : "dark";
-    const nextLabel = nextTheme === "dark" ? "dark" : "light";
-    themeToggle.setAttribute("aria-label", `Switch to ${nextLabel} mode`);
-    themeToggle.setAttribute("title", `Switch to ${nextLabel} mode`);
+    const nextLabel = nextTheme === "dark" ? __("theme.switchToDark") : __("theme.switchToLight");
+    themeToggle.setAttribute("aria-label", nextLabel);
+    themeToggle.setAttribute("title", nextLabel);
   }
 
   /** Toggle between light and dark */
@@ -983,16 +990,16 @@
       const price = pricingAnnual && !isFree
         ? Math.round(tier.price_cents * 0.8)
         : tier.price_cents;
-      const priceDisplay = isFree ? "Free" : `$${(price / 100).toFixed(2)}`;
-      const unit = isFree ? "" : pricingAnnual ? "/mo, billed annually" : "/month";
+      const priceDisplay = isFree ? __("pricing.free") : `$${(price / 100).toFixed(2)}`;
+      const unit = isFree ? "" : pricingAnnual ? __("pricing.billedAnnually") : __("pricing.perMonth");
       const queriesDisplay = tier.queries_per_day === -1
-        ? "Unlimited queries"
-        : `${tier.queries_per_day} queries/day`;
+        ? __("pricing.unlimited")
+        : __("pricing.queriesPerDay", { count: tier.queries_per_day });
       const featured = tier.id === "premium";
 
       return `
         <div class="pricing-card${featured ? ' pricing-card-featured' : ''}">
-          ${featured ? '<div class="pricing-card-badge">Most Popular</div>' : ''}
+          ${featured ? `<div class="pricing-card-badge">${__("pricing.mostPopular")}</div>` : ''}
           <div class="pricing-card-name">${tier.label}</div>
           <div class="pricing-card-price">${priceDisplay} <span class="pricing-card-price-unit">${unit}</span></div>
           <div class="pricing-card-desc">${queriesDisplay} · Standard response</div>
@@ -1002,7 +1009,7 @@
           <button class="btn ${isFree ? 'btn-secondary' : 'btn-primary'} pricing-subscribe-btn"
                   data-tier="${tier.id}"
                   data-free="${isFree}">
-            ${isFree ? 'Current Plan' : 'Subscribe'}
+            ${isFree ? __("pricing.currentPlan") : __("pricing.subscribe")}
           </button>
         </div>
       `;
@@ -1060,8 +1067,8 @@
           planStatus.className = `current-plan-status admin-status-${status.status}`;
         }
         if (planUsage) {
-          const limitText = status.queries_limit === -1 ? "Unlimited" : status.queries_limit;
-          planUsage.textContent = `Queries today: ${status.queries_used_today} / ${limitText}`;
+          const limitText = status.queries_limit === -1 ? __("pricing.unlimited") : status.queries_limit;
+          planUsage.textContent = __("pricing.queriesToday", { used: status.queries_used_today, limit: limitText });
         }
       }
     } catch (e) {
@@ -1101,6 +1108,54 @@
       } catch (e) {
         console.error("Portal error:", e);
       }
+    });
+  }
+
+  /* ─── Language switcher ─── */
+  function initLangSwitcher() {
+    const toggle = document.getElementById("lang-toggle");
+    const dropdown = document.getElementById("lang-dropdown-menu");
+    const label = document.getElementById("lang-toggle-label");
+    if (!toggle || !dropdown) return;
+
+    function renderLangMenu() {
+      const locales = (window.i18n && window.i18n.getLocales()) || [];
+      const current = getCurrentLang();
+      dropdown.innerHTML = locales.map(l => `
+        <button class="lang-option${l.code === current ? ' lang-option-active' : ''}"
+                data-lang="${l.code}" role="option" aria-selected="${l.code === current}">
+          <span class="lang-option-native">${l.nativeLabel}</span>
+          <span class="lang-option-label">${l.label}</span>
+        </button>
+      `).join("");
+      if (label) label.textContent = current.toUpperCase();
+    }
+
+    renderLangMenu();
+
+    // Toggle dropdown on click
+    toggle.addEventListener("click", (e) => {
+      e.stopPropagation();
+      dropdown.classList.toggle("lang-dropdown-open");
+    });
+
+    // Select language
+    dropdown.addEventListener("click", async (e) => {
+      const btn = e.target.closest(".lang-option");
+      if (!btn) return;
+      const code = btn.getAttribute("data-lang");
+      if (code && window.i18n) {
+        await window.i18n.setLanguage(code);
+        renderLangMenu();
+        // Re-translate DOM
+        if (window.i18n.translateDOM) window.i18n.translateDOM();
+      }
+      dropdown.classList.remove("lang-dropdown-open");
+    });
+
+    // Close dropdown on click outside
+    document.addEventListener("click", () => {
+      dropdown.classList.remove("lang-dropdown-open");
     });
   }
 
@@ -1162,7 +1217,7 @@
     // Refresh timestamp
     const refreshEl = document.getElementById("admin-last-refresh");
     if (refreshEl) {
-      refreshEl.textContent = `Placeholder data — last refreshed: ${new Date().toLocaleTimeString()}`;
+      refreshEl.textContent = __("admin.placeholderRefresh", { time: new Date().toLocaleTimeString() });
     }
 
     // Render users table
@@ -1179,12 +1234,12 @@
                 <td>${u.name || "—"}</td>
                 <td><span class="admin-tier-badge ${tierClass}">${u.tier}</span></td>
                 <td class="${statusClass}">${u.subscription_status || "active"}</td>
-                <td>${u.is_admin ? '<span class="admin-badge">Admin</span>' : ""}</td>
+                <td>${u.is_admin ? '<span class="admin-badge">' + __("admin.admin") + '</span>' : ""}</td>
                 <td>${joined}</td>
               </tr>
             `;
           }).join("")
-        : '<tr><td colspan="6" class="admin-table-empty">No users yet</td></tr>';
+        : `<tr><td colspan="6" class="admin-table-empty">${__("results.noUsersYet")}</td></tr>`;
     }
   }
 
@@ -1199,7 +1254,7 @@
       if (!resp.ok) {
         if (resp.status === 401 || resp.status === 403) {
           document.querySelector("#admin-users-body").innerHTML =
-            '<tr><td colspan="6" class="admin-table-empty">Admin access required. Please sign in with an admin account.</td></tr>';
+            `<tr><td colspan="6" class="admin-table-empty">${__("results.adminAccessRequired")}</td></tr>`;
         } else {
           // Use placeholder data
           renderAdminPlaceholder();
@@ -1242,7 +1297,7 @@
       // Refresh timestamp
       const refreshEl = document.getElementById("admin-last-refresh");
       if (refreshEl) {
-        refreshEl.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+        refreshEl.textContent = __("admin.lastUpdated", { time: new Date().toLocaleTimeString() });
       }
 
       // Render users table
@@ -1276,6 +1331,46 @@
   const adminRefreshBtn = document.getElementById("admin-refresh-btn");
   if (adminRefreshBtn) {
     adminRefreshBtn.addEventListener("click", loadAdminDashboard);
+  }
+
+  // Translate admin labels dynamically
+  function translateAdminLabels() {
+    const labels = {
+      "stat-total-users": "admin.totalUsers",
+      "stat-new-users": "admin.newUsers7d",
+      "stat-total-queries": "admin.totalQueries",
+      "stat-queries-7d": "admin.queries7d",
+      "stat-total-revenue": "admin.totalRevenue",
+      "stat-revenue-7d": "admin.revenue7d",
+      "stat-active-subs": "admin.activeSubs",
+      "stat-users-by-tier": "admin.usersByTier",
+    };
+    // Update admin stat labels (in the grid, specific elements)
+    const grid = document.getElementById("admin-stats-grid");
+    if (grid) {
+      const cards = grid.querySelectorAll(".admin-stat-card");
+      const keys = ["admin.totalUsers", "admin.newUsers7d", "admin.totalQueries", "admin.queries7d",
+                     "admin.totalRevenue", "admin.revenue7d", "admin.activeSubs", "admin.usersByTier"];
+      cards.forEach((card, i) => {
+        const label = card.querySelector(".admin-stat-label");
+        if (label && keys[i]) label.textContent = __(keys[i]);
+      });
+    }
+    // Table headers
+    const table = document.getElementById("admin-users-table");
+    if (table) {
+      const ths = table.querySelectorAll("thead th");
+      const thKeys = ["admin.email", "admin.name", "admin.tier", "admin.status", "admin.admin", "admin.joined"];
+      ths.forEach((th, i) => {
+        if (thKeys[i]) th.textContent = __(thKeys[i]);
+      });
+    }
+    // Section headings
+    const headings = document.querySelectorAll(".admin-section .section-label");
+    const hKeys = ["admin.recentUsers", "admin.subBreakdown"];
+    headings.forEach((h, i) => {
+      if (hKeys[i]) h.textContent = __(hKeys[i]);
+    });
   }
 
   /* ─── Admin check ─── */
@@ -1407,7 +1502,7 @@
         // Clerk might still be loading — show a loading message and wait for applyAdminUI
         const tbody = document.getElementById("admin-users-body");
         if (tbody) {
-          tbody.innerHTML = '<tr><td colspan="6" class="admin-table-empty">Verifying admin access…</td></tr>';
+          tbody.innerHTML = `<tr><td colspan="6" class="admin-table-empty">${__("results.verifyingAdmin")}</td></tr>`;
         }
         return;
       }
@@ -1434,6 +1529,7 @@
         return;
       }
 
+      translateAdminLabels();
       loadAdminDashboard();
     }
   };
@@ -1470,6 +1566,28 @@
       requestAnimationFrame(() => {
         document.documentElement.classList.add("theme-ready");
       });
+    });
+
+    // ── i18n initialisation & language switcher ──
+    initLangSwitcher();
+    // Translate static DOM elements (data-i18n attributes)
+    if (window.i18n && window.i18n.translateDOM) {
+      window.i18n.translateDOM();
+    }
+
+    // Re-translate dynamic elements when locale changes
+    document.addEventListener("localechange", () => {
+      // Update theme toggle aria
+      const themeToggle = document.getElementById("theme-toggle");
+      if (themeToggle) updateToggleAria(themeToggle, document.documentElement.getAttribute("data-theme"));
+      // Update the admin view if visible
+      if (state.currentView === "admin") {
+        loadAdminDashboard();
+      }
+      // Re-translate pricing cards
+      if (state.currentView === "pricing") {
+        renderPricingCards();
+      }
     });
 
     // Check admin status after Clerk auth is ready

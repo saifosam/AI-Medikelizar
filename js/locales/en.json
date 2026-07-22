@@ -1,0 +1,289 @@
+{
+  "meta": {
+    "lang": "en",
+    "dir": "ltr",
+    "label": "English",
+    "nativeLabel": "English"
+  },
+  "auth": {
+    "heading": "AI-Medikelizar",
+    "subtitle": "Clinical Reference Tool",
+    "description": "Sign in to access evidence-based medical information grounded in trusted sources."
+  },
+  "disclaimer": "**Not a substitute for professional medical advice.** AI-Medikelizar synthesises information from trusted sources for educational reference only. Always consult a qualified healthcare provider for personal medical decisions.",
+  "nav": {
+    "query": "Query",
+    "pricing": "Pricing",
+    "sources": "Sources",
+    "about": "About",
+    "admin": "Admin dashboard",
+    "skipToMain": "Skip to main content"
+  },
+  "header": {
+    "tagline": "Clinical Reference Tool"
+  },
+  "home": {
+    "heading": "Ask a clinical question",
+    "subheading": "Get answers grounded in peer-reviewed research and trusted health authorities.",
+    "inputPlaceholder": "e.g. What are the standard treatments for adult-onset asthma?",
+    "submitLabel": "Submit question",
+    "thoroughnessLabel": "Thoroughness:",
+    "fast": "Fast",
+    "fastDesc": "~3 sources",
+    "balanced": "Balanced",
+    "balancedDesc": "~6 sources",
+    "thorough": "Thorough",
+    "thoroughDesc": "~12 sources",
+    "fastHint": "Fewer sources, fastest response",
+    "balancedHint": "Balanced speed and thoroughness",
+    "thoroughHint": "Most sources, slower but comprehensive",
+    "searchHint": "Press <kbd>Enter</kbd> to search. Higher thoroughness = more sources, longer wait.",
+    "examplesHeading": "Example queries",
+    "examples": {
+      "hypertension": {
+        "title": "Hypertension guidelines",
+        "desc": "First-line pharmacotherapy per JNC 8"
+      },
+      "covid": {
+        "title": "COVID-19 vaccine efficacy",
+        "desc": "mRNA vaccines in immunocompromised patients"
+      },
+      "cancer": {
+        "title": "Colorectal cancer screening",
+        "desc": "USPSTF recommendations"
+      },
+      "diabetes": {
+        "title": "Diabetes & HbA1c targets",
+        "desc": "Microvascular complication risk"
+      }
+    }
+  },
+  "results": {
+    "newQuery": "New query",
+    "queryLabel": "Query",
+    "followUpLabel": "Follow-up",
+    "loadingQuick": "Quick search in progress…",
+    "loadingMedium": "Retrieving evidence from trusted sources…",
+    "loadingThorough": "Thorough search underway — this may take a moment…",
+    "loadingFollowup": "Retrieving evidence for follow-up…",
+    "synthesis": "Synthesis",
+    "confidence": "Confidence",
+    "high": "High",
+    "moderate": "Moderate",
+    "limited": "Limited",
+    "generated": "Generated",
+    "sources": "Sources",
+    "source": "source",
+    "sourcesLabel": "Sources",
+    "viewOnPubMed": "View on PubMed",
+    "relevance": "Relevance",
+    "noAnswer": "No answer returned.",
+    "noUsersYet": "No users yet",
+    "adminAccessRequired": "Admin access required. Please sign in with an admin account.",
+    "verifyingAdmin": "Verifying admin access…",
+    "followupPlaceholder": "Ask a follow-up or start a new topic…",
+    "submitFollowup": "Submit follow-up",
+    "searching": "Retrieving evidence and generating answer"
+  },
+  "sources": {
+    "heading": "Trusted sources",
+    "subheading": "Every answer from AI-Medikelizar is grounded in evidence from these authoritative databases and health organisations. We index only publicly available, peer-reviewed, or government-vetted content.",
+    "pubmed": {
+      "name": "PubMed / MEDLINE",
+      "publisher": "U.S. National Library of Medicine & National Institutes of Health",
+      "description": "Over 35 million citations for biomedical literature from MEDLINE, life science journals, and online books. Citations may include links to full-text content from PubMed Central and publisher web sites.",
+      "coverage": "1946 – present",
+      "update": "Daily",
+      "types": "Peer-reviewed journal articles, systematic reviews, clinical trials"
+    },
+    "cdc": {
+      "name": "Centers for Disease Control and Prevention (CDC)",
+      "publisher": "U.S. Department of Health & Human Services",
+      "description": "Authoritative public health information, disease-specific guidelines, vaccination recommendations, epidemiological data, and health statistics for the United States and global health threats.",
+      "coverage": "Ongoing, with historical data",
+      "update": "Continuous",
+      "types": "Guidelines, MMWR reports, data sets, clinical resources"
+    },
+    "who": {
+      "name": "World Health Organization (WHO)",
+      "publisher": "United Nations",
+      "description": "Global health guidelines, disease classification (ICD), international health regulations, epidemiological updates, and evidence-based recommendations for health policy and clinical practice worldwide.",
+      "coverage": "Ongoing, with archival content",
+      "update": "Continuous",
+      "types": "Guidelines, technical reports, situation reports, classification tools"
+    },
+    "medlineplus": {
+      "name": "MedlinePlus",
+      "publisher": "U.S. National Library of Medicine & National Institutes of Health",
+      "description": "Consumer-friendly health information covering more than 1,000 health topics in multiple languages. Trusted, up-to-date health information reviewed by medical librarians and physicians.",
+      "coverage": "Ongoing, regularly reviewed",
+      "update": "Periodic review cycle",
+      "types": "Health topic summaries, drug information, medical encyclopedia, patient handouts"
+    },
+    "nih": {
+      "name": "National Institutes of Health (NIH)",
+      "publisher": "U.S. Department of Health & Human Services",
+      "description": "The nation's medical research agency encompassing 27 institutes and centres. Source for clinical trial registries, research funding priorities, disease-specific research summaries, and health disparities data.",
+      "coverage": "Ongoing, historical research archives",
+      "update": "Continuous",
+      "types": "Research summaries, clinical trial info, health topic portals, strategic plans"
+    },
+    "pmc": {
+      "name": "PubMed Central (PMC)",
+      "publisher": "U.S. National Library of Medicine & National Institutes of Health",
+      "description": "Free full-text archive of biomedical and life sciences journal literature. All articles are freely accessible and many include supplementary materials, data sets, and multimedia.",
+      "coverage": "Varies by journal",
+      "update": "Daily",
+      "types": "Full-text articles, review papers, clinical trial reports"
+    },
+    "msd": {
+      "name": "MSD Manuals",
+      "publisher": "Merck Sharp & Dohme (MSD), a subsidiary of Merck & Co.",
+      "description": "Trusted, comprehensive medical reference covering thousands of diseases, symptoms, and treatments. Available in both a Professional Edition and a Consumer Edition.",
+      "coverage": "Ongoing, with periodic major revisions",
+      "update": "Continuous",
+      "types": "Clinical overviews, drug information, diagnostic guidelines, patient education materials, multimedia"
+    },
+    "noteHeading": "How we use these sources",
+    "noteP1": "When you submit a query, AI-Medikelizar searches across the above databases using semantic retrieval to identify the most relevant and authoritative content. Our AI then synthesises a response grounded exclusively in the retrieved evidence — never from its internal training data alone.",
+    "noteP2": "Every claim in an answer is linked to at least one source citation. You can expand any citation to view the full reference details and access the original publication. We are transparent about the evidence behind every answer."
+  },
+  "about": {
+    "heading": "About AI-Medikelizar",
+    "missionTitle": "Our mission",
+    "missionP1": "AI-Medikelizar exists to make evidence-based medical knowledge more accessible to clinicians, researchers, and informed patients. We believe that access to reliable, cited health information is a cornerstone of informed decision-making.",
+    "missionP2": "The tool is designed as a clinical reference — not a diagnostic aid, not a treatment planner, and never a substitute for professional judgement. Every answer points back to the source it came from, so you can verify, read in context, and draw your own conclusions.",
+    "trustTitle": "The trust model",
+    "trustCards": [
+      {
+        "title": "Source-restricted retrieval",
+        "text": "Our retrieval system searches only the pre-indexed trusted databases listed on our Sources page. We do not draw from unfiltered web content, forums, or unverified repositories."
+      },
+      {
+        "title": "Citation-anchored generation",
+        "text": "The AI model is instructed to compose answers using only the retrieved source text. Every factual statement is tied to a citation marker referencing a specific source card."
+      },
+      {
+        "title": "Human-reviewable evidence",
+        "text": "Every source card includes the publication title, authors, journal or publisher, date, and a direct link to the original. You can always read the source for yourself."
+      },
+      {
+        "title": "Transparent limitations",
+        "text": "We clearly communicate confidence levels, date ranges of indexed content, and gaps in coverage. No answer is presented as definitive — medicine is an evolving field."
+      }
+    ],
+    "techTitle": "Technical approach",
+    "techP": "AI-Medikelizar uses a retrieval-augmented generation (RAG) pipeline. When you ask a question, embeddings of your query are used to semantically search a curated corpus of medical literature. The most relevant passages are retrieved and passed to a large language model, which is instructed to:",
+    "techItems": [
+      "Answer only from the provided source text",
+      "Mark every claim with an inline citation to its source passage",
+      "Explicitly state when the retrieved evidence is insufficient to answer",
+      "Never fabricate references or infer beyond what the sources say"
+    ],
+    "intendedTitle": "Intended use",
+    "intendedP": "This tool is designed for:",
+    "intendedItems": [
+      "<strong>Healthcare professionals</strong> seeking a quick synthesis of current evidence on a specific clinical question",
+      "<strong>Researchers</strong> exploring a new topic area and looking for key papers",
+      "<strong>Patients and caregivers</strong> who want to better understand a condition or treatment from authoritative sources — in consultation with their healthcare team"
+    ],
+    "intendedNote": "It is <strong>not</strong> designed for emergency medical questions, diagnostic decision-making, or as a replacement for clinical judgement.",
+    "disclaimerTitle": "Disclaimer",
+    "disclaimerP1": "<strong>AI-Medikelizar is for informational and educational purposes only.</strong> The content generated by this tool does not constitute medical advice, diagnosis, or treatment. Always seek the advice of your physician or other qualified health provider with any questions you may have regarding a medical condition or treatment. Never disregard professional medical advice or delay in seeking it because of something you have read on this site.",
+    "disclaimerP2": "If you think you may have a medical emergency, call your doctor or 911 immediately. AI-Medikelizar does not recommend or endorse any specific tests, physicians, products, procedures, opinions, or other information that may be referenced in generated responses."
+  },
+  "pricing": {
+    "heading": "Simple, transparent pricing",
+    "subheading": "Choose the plan that fits your needs. All plans include access to evidence-based medical information from trusted sources. Upgrade anytime.",
+    "monthly": "Monthly",
+    "annual": "Annual",
+    "save": "Save 20%",
+    "free": "Free",
+    "perMonth": "/month",
+    "billedAnnually": "/mo, billed annually",
+    "unlimited": "Unlimited queries",
+    "queriesPerDay": "{count} queries/day",
+    "mostPopular": "Most Popular",
+    "currentPlan": "Current Plan",
+    "subscribe": "Subscribe",
+    "yourPlan": "Your Current Plan",
+    "manageSub": "Manage Subscription",
+    "faqHeading": "Frequently asked questions",
+    "faq": [
+      {
+        "q": "Can I upgrade or downgrade my plan?",
+        "a": "Yes, you can upgrade or downgrade at any time. Changes take effect immediately. If you downgrade, the new limits apply at the start of your next billing cycle."
+      },
+      {
+        "q": "What happens when I reach my daily query limit?",
+        "a": "If you reach your daily limit, you can upgrade to a higher tier for more queries, or wait until the next day when your quota resets."
+      },
+      {
+        "q": "Can I cancel my subscription?",
+        "a": "Yes, you can cancel anytime through your account settings. Your access continues until the end of the current billing period."
+      },
+      {
+        "q": "Is there a free trial for paid plans?",
+        "a": "Yes, all paid plans come with a 7-day free trial. You won't be charged until the trial period ends."
+      }
+    ],
+    "features": {
+      "basic": ["5 queries per day", "Standard response speed", "Basic source citations", "Email support"],
+      "premium": ["50 queries per day", "Faster response priority", "Detailed source citations", "Priority email support"],
+      "vip": ["Unlimited queries", "Fastest response priority", "Full source citations with abstracts", "Priority support (email + chat)", "Early access to new features"]
+    },
+    "queriesToday": "Queries today: {used} / {limit}"
+  },
+  "admin": {
+    "heading": "Admin Dashboard",
+    "refresh": "Refresh",
+    "lastUpdated": "Last updated: {time}",
+    "totalUsers": "Total Users",
+    "newUsers7d": "New Users (7d)",
+    "totalQueries": "Total Queries",
+    "queries7d": "Queries (7d)",
+    "totalRevenue": "Total Revenue",
+    "revenue7d": "Revenue (7d)",
+    "activeSubs": "Active Subscriptions",
+    "usersByTier": "Users by Tier",
+    "recentUsers": "Recent Users",
+    "email": "Email",
+    "name": "Name",
+    "tier": "Tier",
+    "status": "Status",
+    "admin": "Admin",
+    "joined": "Joined",
+    "subBreakdown": "Subscription Breakdown",
+    "basicDesc": "Free tier · 5 queries/day",
+    "premiumDesc": "$9.99/mo · 50 queries/day",
+    "vipDesc": "$29.99/mo · Unlimited queries",
+    "monthlyRevenue": "Monthly Revenue",
+    "estimatedMRR": "Estimated MRR",
+    "placeholderRefresh": "Placeholder data — last refreshed: {time}",
+    "loading": "Loading…"
+  },
+  "footer": {
+    "logo": "AI-Medikelizar",
+    "tagline": "Evidence-based clinical reference tool.",
+    "navHeading": "Navigate",
+    "resourcesHeading": "Resources",
+    "disclaimer": "This tool does not provide medical advice. See the About page for full disclaimer.",
+    "copyright": "© {year} AI-Medikelizar. Not a substitute for professional medical advice."
+  },
+  "theme": {
+    "switchToDark": "Switch to dark mode",
+    "switchToLight": "Switch to light mode"
+  },
+  "language": {
+    "switchLanguage": "Switch language"
+  },
+  "errors": {
+    "backendTimeout": "Backend timed out — falling back to demo",
+    "backendNotReachable": "Backend not reachable — falling back to demo",
+    "backendError": "Backend error: {message} — falling back to demo",
+    "checkoutError": "Failed to create checkout session",
+    "checkoutConnectionError": "Could not connect to payment server. Please try again.",
+    "pricingLoadError": "Pricing API unavailable, using placeholder",
+    "subscriptionLoadError": "Failed to load subscription status"
+  }
+}
