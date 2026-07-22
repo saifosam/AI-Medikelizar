@@ -105,6 +105,7 @@ AI-Medikelizar/
 ├── .github/
 │   └── workflows/
 │       └── pages.yml           # GitHub Pages deployment workflow (alternative)
+├── requirements.txt            # Root Python dependencies (same as backend/)
 ├── vercel.json                 # Vercel deployment config (rewrites, headers, function settings)
 ├── .env.example                # Safe template — copy to .env with your keys
 ├── .env                        # ⚠️ Your real keys — gitignored, never committed
@@ -129,111 +130,237 @@ AI-Medikelizar/
 
 ## Setup & installation
 
-### Prerequisites
+There are **three ways** to run AI-Medikelizar locally, from simplest to most complete:
 
+| Method | What you get | Best for |
+|--------|-------------|----------|
+| **A — Frontend only** | UI exploration with demo data (no backend needed) | Quick UI preview |
+| **B — Full stack (recommended)** | Everything on one port: frontend + API + auth + database | Local development |
+| **C — Backend + separate frontend** | Backend on port 8000, frontend on port 5500 | Debugging frontend/backend separately |
+
+---
+
+### Prerequisites (all methods)
+
+- **Python 3.10+** — [Download Python](https://www.python.org/downloads/)
+- **Git** — [Download Git](https://git-scm.com/downloads)
 - A modern web browser (Chrome, Firefox, Safari, Edge)
-- Python 3.10+ (for the backend)
-- _For the frontend only:_ No build tools required — open `index.html` or deploy to any static host
-
-### Running locally (frontend only — demo mode)
-
-The frontend runs in **demo mode** by default — it uses pre-loaded sample data so you can explore the UI without a backend.
 
 ```bash
 # Clone the repository
 git clone https://github.com/saifosam/AI-Medikelizar.git
 cd AI-Medikelizar
-
-# Serve with a local HTTP server (recommended for proper routing)
-python -m http.server 5500
-# Then visit http://localhost:5500
 ```
-
-Real API calls are automatically attempted when the backend is running. If the backend isn't reachable, it gracefully falls back to demo data.
 
 ---
 
-### Running the full stack (backend + frontend)
+### Method A — Frontend only (demo mode, no backend needed)
 
-#### 1. Install Python dependencies
+This starts the UI with pre-loaded sample data. You can explore the interface, sign in with Clerk, and see how queries look — all without a running backend.
 
 ```bash
-pip install -r backend/requirements.txt
+# Start a simple HTTP server
+python -m http.server 5500
 ```
 
-#### 2. Configure environment variables
+Then open **http://localhost:5500** in your browser.
 
-Create a `.env` file in the project root (or `backend/.env`). Copy the template to start:
+**What works:**
+- ✅ All UI views (home, results with demo data, pricing, sources, about)
+- ✅ Clerk sign-in/sign-up (handled client-side by Clerk's CDN SDK)
+- ✅ Dark/light mode toggle
+- ✅ Example queries (show pre-built demo answers)
+- ✅ Pricing page (shows placeholder tiers)
+
+**What doesn't work:**
+- ❌ Real AI queries (gracefully falls back to demo data)
+- ❌ Admin dashboard (needs backend to check admin status)
+- ❌ Subscription management (needs backend)
+
+---
+
+### Method B — Full stack: one command (🚀 RECOMMENDED)
+
+This starts **both the backend API and frontend** on a single port (8000). Everything works: queries, auth, admin dashboard, subscriptions.
 
 ```bash
+# 1. Install Python dependencies
+pip install -r backend/requirements.txt
+
+# 2. Configure environment variables
 cp .env.example .env
 ```
 
-At minimum, for the backend to start without crashing, you need:
+Open `.env` in a text editor and **uncomment/edit these minimum settings**:
 
 ```ini
-# PubMed (NCBI requires a valid email — even without an API key)
+# Choose ONE AI provider (see below for free options)
+AI_PROVIDER=google
+
+# Google Gemini (🆓 FREE — no credit card needed)
+# Get a free API key: https://aistudio.google.com/apikey
+GOOGLE_API_KEY=AIza...      # <-- Paste your Google Gemini key here
+
+# PubMed (NCBI requires a valid email)
 PUBMED_EMAIL=your.email@example.com
-PUBMED_API_KEY=your_ncbi_api_key     # Optional: raises rate limit from 3 → 10 req/s
-
-# Choose ONE AI provider (see below for all options)
-AI_PROVIDER=ollama                   # or: google, groq, openrouter, openai, anthropic, custom
 ```
 
-For a full list of all configurable env vars, see [Environment Variables Reference](#environment-variables-reference).
-
-> ⚠️ `.env` is in `.gitignore` — your keys stay safe.
-
-#### 3. Start the backend server
-
-```bash
-# From the project root directory — serves both backend API and frontend static files
-uvicorn backend.main:app --reload --port 8000
-```
-
-Or use the convenience launcher:
+> **What to pick for AI_PROVIDER?**
+> - `google` — Free tier, generous limits, no credit card needed. Get a key at https://aistudio.google.com/apikey
+> - `groq` — Free tier, very fast inference. Get a key at https://console.groq.com
+> - `ollama` — Runs 100% locally, no internet needed. See "Ollama setup" below
 
 ```bash
+# 3. Start the server
 python run.py
 ```
 
-This starts the server and automatically opens `http://localhost:8000` in your browser.
+This automatically opens **http://localhost:8000** in your browser. The backend serves both the API and the frontend static files on this single port.
 
-You should see startup logs like:
+**What works:**
+- ✅ Everything — all features are fully functional
+- ✅ Real AI-powered queries (with PubMed evidence retrieval)
+- ✅ Follow-up queries with conversation context
+- ✅ Clerk authentication
+- ✅ Admin dashboard (sign in with an admin email)
+- ✅ Subscription/pricing from backend API
+- ✅ Query logging and page view tracking
+
+**What you'll see in the terminal:**
 
 ```
-  ╔══════════════════════════════════════════════════════════════════════╗
-  ║                 AI-Medikelizar — Environment Check                 ║
-  ╚══════════════════════════════════════════════════════════════════════╝
-
-  Variable                        Status       Purpose
-  ────────────────────────────── ──────────── ────────────────────────────────────
-
-  INFO:     AI-Medikelizar Backend starting
-  INFO:       Provider:      ollama
-  INFO:       Model:         qwen2.5-coder:7b
-  INFO:       API key:       NOT SET — will fail if not a local provider
-  INFO:       Confidence:    medium (default)
-  INFO:       PubMed:        no API key (3 req/s)
-  INFO:       Rate limit:    enabled
-  INFO:       Admin emails:  admin@ai-medikelizar.com, saifosam.business@gmail.com, ...
-  INFO:       Payments:      not configured
+  +------------------------------------------------+
+  |        AI-Medikelizar -- Starting Up           |
+  +------------------------------------------------+
+  |  Open:  http://localhost:8000                  |
+  |  Provider: google                              |
+  |  Model:    gemini-2.0-flash-lite               |
+  |  Payments: not configured                      |
+  |  Press Ctrl+C to stop                          |
+  +------------------------------------------------+
 ```
 
-#### 4. Test that it works
+---
+
+### Method C — Backend + separate frontend (advanced)
+
+Run the backend on port 8000 and the frontend on a different port. Use this if you want to debug frontend and backend independently.
+
+**Terminal 1 — Backend:**
+```bash
+pip install -r backend/requirements.txt
+cp .env.example .env   # Edit .env with your keys (see Method B step 2)
+uvicorn backend.main:app --reload --port 8000
+```
+
+**Terminal 2 — Frontend:**
+```bash
+python -m http.server 5500
+```
+
+Then open **http://localhost:5500** in your browser.
+
+> **⚠️ CORS note:** The frontend on port 5500 will try to call the backend at `http://localhost:8000`. If you see CORS errors in the browser console, set the `CORS_ORIGINS` environment variable to include port 5500:
+> ```bash
+> # When starting the backend:
+> CORS_ORIGINS="http://localhost:8000,http://127.0.0.1:8000,http://localhost:5500" uvicorn backend.main:app --reload --port 8000
+> ```
+
+---
+
+### Verifying it works
+
+Once the server is running (Method B or C), test the API:
 
 ```bash
 # Health check — always works, no keys required
 curl http://localhost:8000/api/health
-# → {"status":"ok","provider":"ollama","model":"qwen2.5-coder:7b",...}
 
-# Try a query (replace with your own question)
-curl -X POST http://localhost:8000/api/query \
-  -H "Content-Type: application/json" \
-  -d '{"query":"What are the JNC 8 guidelines for hypertension?"}'
+# Expected response (will vary by provider):
+{"status":"ok","provider":"google","model":"gemini-2.0-flash-lite"}
 ```
 
-If everything is configured, you'll get back a JSON response with `answer` (HTML), `sources` (array of source cards), and `confidence`.
+Open the browser at **http://localhost:8000**, sign in with your Clerk account, and try an example query.
+
+---
+
+## Quick start: Free providers (no credit card needed)
+
+### Option 1: Google Gemini (🆓 FREE)
+
+```bash
+# 1. Get a free API key
+#    Go to https://aistudio.google.com/apikey
+#    Click "Create API Key" → done
+
+# 2. Set up .env
+cp .env.example .env
+```
+
+Edit `.env`:
+```ini
+AI_PROVIDER=google
+GOOGLE_API_KEY=AIza...   # Paste your key here
+PUBMED_EMAIL=your.email@example.com
+```
+
+```bash
+# 3. Run
+pip install -r backend/requirements.txt
+python run.py
+```
+
+### Option 2: Groq (🆓 FREE — very fast)
+
+```bash
+# 1. Get a free API key
+#    Go to https://console.groq.com
+#    Sign up → API Keys → Create API Key
+
+# 2. Set up .env
+cp .env.example .env
+```
+
+Edit `.env`:
+```ini
+AI_PROVIDER=groq
+GROQ_API_KEY=gsk_...     # Paste your key here
+PUBMED_EMAIL=your.email@example.com
+```
+
+```bash
+# 3. Run
+pip install -r backend/requirements.txt
+python run.py
+```
+
+### Option 3: Ollama (🆓 FREE — runs locally, no internet)
+
+```bash
+# 1. Install Ollama from https://ollama.ai
+#    Or on macOS/Linux:
+#      curl -fsSL https://ollama.ai/install.sh | sh
+
+# 2. Pull a model (7B model ~4GB download)
+ollama pull qwen2.5-coder:7b
+
+# 3. Set up .env
+cp .env.example .env
+```
+
+Edit `.env`:
+```ini
+AI_PROVIDER=ollama
+OLLAMA_MODEL=qwen2.5-coder:7b
+OLLAMA_BASE_URL=http://localhost:11434
+PUBMED_EMAIL=your.email@example.com
+```
+
+```bash
+# 4. Run
+pip install -r backend/requirements.txt
+python run.py
+```
 
 ---
 
@@ -330,12 +457,12 @@ The webhook syncs users from Clerk to the local database when they sign up, upda
 5. Click **Create**
 6. Copy the **Signing Secret** (starts with `whsec_...`)
 
-**In `.env`:**
+**In `.env`:** add the signing secret:
 ```ini
 CLERK_WEBHOOK_SECRET=whsec_YOUR_SIGNING_SECRET
 ```
 
-> **Note:** The webhook is optional. If not configured, users are created on-the-fly from their Clerk session data when they first make an API request.
+> **Note:** The webhook is optional for local development. If not configured, users are created on-the-fly from their Clerk session data when they first make an API request.
 
 ---
 
@@ -515,20 +642,20 @@ vercel deploy --prod
 
 ```
                           ┌──────────────────────┐
-                          │   Vercel Edge Network │
+                          │  Vercel Edge Network │
                           └──────────┬───────────┘
                                      │
                     ┌────────────────┼────────────────┐
-                    │                │                 │
-                    ▼                ▼                 ▼
+                    │                │                │
+                    ▼                ▼                ▼
            ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-           │ Static Files  │  │   /api/*     │  │   SPA        │
-           │ (HTML/CSS/JS) │  │  Serverless  │  │   Catch-all  │
-           │              │  │   Function   │  │   → index.html│
+           │ Static Files │  │   /api/*     │  │   SPA        │
+           │(HTML/CSS/JS) │  │  Serverless  │  │   Catch-all  │
+           │              │  │   Function   │  │  → index.html│
            └──────────────┘  └──────┬───────┘  └──────────────┘
                                     │
                            ┌────────┴────────┐
-                           │  FastAPI Backend │
+                           │  FastAPI Backend│
                            │  Python 3.12    │
                            │  RAG Pipeline   │
                            └─────────────────┘
@@ -550,24 +677,24 @@ vercel deploy --prod
 
 ```
                           ┌─────────────────────────────┐
-                          │     Browser (Client)         │
-                          │  Layer 3: Shield icon hidden │
-                          │  for non-admin users         │
+                          │     Browser (Client)        │
+                          │  Layer 3: Shield icon hidden│
+                          │  for non-admin users        │
                           └──────────┬──────────────────┘
                                      │ Session token / cookie
                                      ▼
                           ┌─────────────────────────────┐
-                          │  FastAPI Middleware          │
-                          │  Layer 1: Token presence     │
-                          │  check on /api/admin/*       │
-                          │  Returns 401 if no token     │
+                          │  FastAPI Middleware         │
+                          │  Layer 1: Token presence    │
+                          │  check on /api/admin/*      │
+                          │  Returns 401 if no token    │
                           └──────────┬──────────────────┘
                                      ▼
                           ┌─────────────────────────────┐
                           │  Route Handler Dependency   │
-                          │  Layer 2: require_admin()    │
-                          │  Email whitelist check       │
-                          │  Returns 403 if not admin    │
+                          │  Layer 2: require_admin()   │
+                          │  Email whitelist check      │
+                          │  Returns 403 if not admin   │
                           └─────────────────────────────┘
 ```
 
