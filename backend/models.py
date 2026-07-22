@@ -178,3 +178,9 @@ class SubscriptionStatusResponse(BaseModel):
     current_period_end: Optional[str] = None
     queries_used_today: int = 0
     queries_limit: int = 0
+
+
+class HumanizeRequest(BaseModel):
+    """Request to rewrite an answer in plain language."""
+    answer: str  # The HTML answer to humanize
+    sources: list[SourceModel] = []  # Source context for the humanizer

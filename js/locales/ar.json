@@ -83,7 +83,9 @@
     "verifyingAdmin": "جاري التحقق من صلاحيات المشرف…",
     "followupPlaceholder": "اطرح سؤال متابعة أو موضوع جديد…",
     "submitFollowup": "إرسال المتابعة",
-    "searching": "جاري استرجاع الأدلة وتوليد الإجابة"
+    "searching": "جاري استرجاع الأدلة وتوليد الإجابة",
+    "humanizerLabel": "لغة بسيطة",
+    "humanizedBadge": "لغة بسيطة"
   },
   "sources": {
     "heading": "المصادر الموثوقة",

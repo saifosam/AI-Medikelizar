@@ -31,7 +31,7 @@ from fastapi.responses import FileResponse
 from pathlib import Path
 
 from . import config
-from .models import QueryRequest, QueryResponse, HealthResponse
+from .models import QueryRequest, QueryResponse, HealthResponse, HumanizeRequest
 from .rag_pipeline import run_pipeline
 from .database import init_db
 
@@ -351,6 +351,75 @@ async def get_current_user_info(request: Request):
         )
     finally:
         db.close()
+
+
+@app.post("/api/humanize")
+@limiter.limit("20/minute")
+async def humanize_answer(request: Request, body: HumanizeRequest):
+    """
+    Rewrite a clinical answer in warm, plain language.
+
+    Takes the original synthesis HTML, strips it to plain text (preserving
+    citation markers), sends it to the AI provider for a tone-only rewrite,
+    and returns the humanized version with the same citations preserved.
+    """
+    from .ai_providers import get_provider, AIProviderError
+
+    if not body.answer.strip():
+        raise HTTPException(status_code=400, detail="Answer cannot be empty.")
+
+    # Strip HTML to plain text, but preserve citation markers like [1], [1][2]
+    import re
+    plain_text = re.sub(r'<[^>]+>', '', body.answer)
+    # Normalise whitespace
+    plain_text = re.sub(r'\s+', ' ', plain_text).strip()
+
+    # Build source list for context
+    sources_text = ""
+    for i, src in enumerate(body.sources or [], start=1):
+        sources_text += f"[{i}] {src.title} — {src.authors} ({src.journal}, {src.date})\n"
+
+    humanize_prompt = (
+        f"## Original Clinical Synthesis\n{plain_text}\n\n"
+        + (f"## Sources Referenced\n{sources_text}\n\n" if sources_text else "")
+        + "## Instructions\n"
+        "Rewrite the synthesis above in a warmer, plain-language tone.\n\n"
+        "IMPORTANT RULES:\n"
+        "1. PRESERVE ALL citation markers EXACTLY — every [1], [2], etc. must stay exactly as written.\n"
+        "2. Do NOT add, remove, or soften ANY medical claim or fact.\n"
+        "3. Do NOT change confidence/certainty language — keep 'may indicate', 'suggests', 'is associated with' exactly as written.\n"
+        "4. Do NOT introduce new information or examples not in the original.\n"
+        "5. Make the tone warmer and more conversational:\n"
+        "   - Explain medical terms in simple words or short parentheticals\n"
+        "   - Use direct 'you' language where appropriate (e.g. 'your blood pressure' not 'the patient's blood pressure')\n"
+        "   - Use contractions (it's, don't, can't)\n"
+        "   - Break long sentences into shorter, clearer ones\n"
+        "   - Keep the same paragraph structure and headings\n"
+        "6. Output ONLY the rewritten text — no prefixes, no explanations.\n"
+    )
+
+    try:
+        provider = get_provider()
+        humanized = await provider.complete(
+            humanize_prompt,
+            "You are a medical writer who makes clinical content accessible to patients without changing any facts. "
+            "Preserve all citations, all claims, all certainty language — only change the tone."
+        )
+        humanized = humanized.strip().strip('"').strip("'")
+
+        if not humanized:
+            log.warning("Humanizer returned empty response, falling back to original")
+            return {"humanized": body.answer}
+
+        log.info(f"Humanizer: rewrote {len(plain_text)} chars -> {len(humanized)} chars")
+        return {"humanized": humanized}
+
+    except AIProviderError as e:
+        log.warning(f"Humanizer AI error: {e}, falling back to original")
+        return {"humanized": body.answer}
+    except Exception as e:
+        log.warning(f"Humanizer unexpected error: {e}, falling back to original")
+        return {"humanized": body.answer}
 
 
 # ═══ Helpers ═══════════════════════════════════════════

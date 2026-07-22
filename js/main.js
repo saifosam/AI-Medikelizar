@@ -117,6 +117,13 @@
   const followupForm = $("#followup-form");
   const followupInput = $("#followup-input");
   const conversationHistory = $("#conversation-history");
+
+  /* ─── Humanizer state ─── */
+  let humanizerEnabled = localStorage.getItem("ai-medikelizar-humanizer") === "true";
+  let humanizerCache = {};   // { answerHash: { original, humanized } }
+  let humanizerAnswerHash = null;  // current displayed answer's hash
+  let humanizerOriginalAnswer = null;  // current original answer HTML
+
   /* ─── Router ─── */
   function route(hash) {
     const viewId = hash.replace(/^#/, "") || "home";
@@ -597,6 +604,165 @@
     fetchCredits();
   }
 
+  /* ─── Humanizer: simple hash for caching ─── */
+  function simpleHash(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    return "h" + Math.abs(hash).toString(36);
+  }
+
+  /* ─── Humanizer: call backend API to rewrite in plain language ─── */
+  async function humanizeAndSwap(answerHtml, sources) {
+    const hash = humanizerAnswerHash;
+    if (!hash || !humanizerCache[hash]) return;
+
+    // If already cached, apply immediately
+    if (humanizerCache[hash].humanized) {
+      applyHumanizedAnswer(humanizerCache[hash].humanized);
+      return;
+    }
+
+    try {
+      // Strip HTML to plain text for the API, but keep citation markers
+      const plainAnswer = stripHtml(answerHtml);
+
+      const resp = await fetch(`${API_BASE}/api/humanize`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answer: plainAnswer, sources }),
+        signal: AbortSignal.timeout(30000), // 30-second timeout
+      });
+
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.humanized && data.humanized !== plainAnswer) {
+          // Convert plain text back to HTML paragraphs + preserve citation markers
+          const humanizedHtml = textToHtml(data.humanized);
+          humanizerCache[hash].humanized = humanizedHtml;
+          applyHumanizedAnswer(humanizedHtml);
+        }
+      } else {
+        console.warn("Humanizer API returned", resp.status);
+      }
+    } catch (e) {
+      console.warn("Humanizer call failed:", e.message);
+    }
+  }
+
+  /* ─── Humanizer: swap answer-body content to humanized version ─── */
+  function applyHumanizedAnswer(humanizedHtml) {
+    // Only swap if humanizer is still ON
+    if (!humanizerEnabled) return;
+    answerBody.innerHTML = humanizedHtml;
+    const badge = document.getElementById("answer-humanized-badge");
+    if (badge) badge.hidden = false;
+    // Re-wire citation markers in the newly inserted HTML
+    answerBody.querySelectorAll(".citation-marker").forEach((marker) => {
+      marker.addEventListener("click", () => {
+        const id = marker.getAttribute("data-source-id");
+        const targetCard = document.querySelector(`.source-card[data-source-id="${id}"]`);
+        if (targetCard) {
+          const trigger = targetCard.querySelector(".source-card-trigger");
+          if (!targetCard.classList.contains("expanded")) {
+            targetCard.classList.add("expanded");
+            trigger.setAttribute("aria-expanded", "true");
+          }
+          targetCard.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      });
+    });
+  }
+
+  /* ─── Humanizer: convert plain text to HTML with citation preservation ─── */
+  function textToHtml(text) {
+    // Escape HTML
+    text = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    // Convert markdown bold
+    text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    // Convert citation markers like [1], [1][2], [1,2,3] to sup tags
+    text = text.replace(/\[([\d,\s]+)\]/g, (match) => {
+      const ids = match.match(/\d+/g);
+      return ids.map(i =>
+        `<sup class="citation-marker" data-source-id="${i}" tabindex="0" role="button" aria-label="Source ${i}">[${i}]</sup>`
+      ).join("");
+    });
+    // Wrap paragraphs
+    const paragraphs = text.split(/\n+/).filter(p => p.trim());
+    return paragraphs.map(p => `<p>${p.trim()}</p>`).join("\n");
+  }
+
+  /* ─── Humanizer: init toggle ─── */
+  function initHumanizer() {
+    const toggleSwitch = document.getElementById("humanizer-switch");
+    const toggleLabel = document.getElementById("humanizer-toggle");
+    if (!toggleSwitch || !toggleLabel) return;
+
+    // Restore persisted state
+    if (humanizerEnabled) {
+      toggleSwitch.setAttribute("aria-checked", "true");
+      toggleLabel.classList.add("humanizer-on");
+    }
+
+    function toggleHumanizer() {
+      humanizerEnabled = !humanizerEnabled;
+      localStorage.setItem("ai-medikelizar-humanizer", humanizerEnabled ? "true" : "false");
+      toggleSwitch.setAttribute("aria-checked", String(humanizerEnabled));
+      toggleLabel.classList.toggle("humanizer-on", humanizerEnabled);
+
+      const badge = document.getElementById("answer-humanized-badge");
+
+      if (humanizerEnabled && humanizerAnswerHash && humanizerCache[humanizerAnswerHash]) {
+        // ON: show humanized version
+        const cache = humanizerCache[humanizerAnswerHash];
+        if (cache.humanized) {
+          applyHumanizedAnswer(cache.humanized);
+        } else {
+          // Call API to humanize
+          humanizeAndSwap(cache.original, cache.sources);
+        }
+      } else if (!humanizerEnabled && humanizerAnswerHash && humanizerCache[humanizerAnswerHash]) {
+        // OFF: show original version
+        const original = humanizerCache[humanizerAnswerHash].original;
+        answerBody.innerHTML = original;
+        if (badge) badge.hidden = true;
+        // Re-wire citation markers
+        answerBody.querySelectorAll(".citation-marker").forEach((marker) => {
+          marker.addEventListener("click", () => {
+            const id = marker.getAttribute("data-source-id");
+            const targetCard = document.querySelector(`.source-card[data-source-id="${id}"]`);
+            if (targetCard) {
+              const trigger = targetCard.querySelector(".source-card-trigger");
+              if (!targetCard.classList.contains("expanded")) {
+                targetCard.classList.add("expanded");
+                trigger.setAttribute("aria-expanded", "true");
+              }
+              targetCard.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+          });
+        });
+      }
+    }
+
+    // Click on the switch toggles
+    toggleSwitch.addEventListener("click", toggleHumanizer);
+    // Keyboard support
+    toggleSwitch.addEventListener("keydown", (e) => {
+      if (e.key === " " || e.key === "Enter") {
+        e.preventDefault();
+        toggleHumanizer();
+      }
+    });
+    // Click on the whole label also toggles
+    toggleLabel.addEventListener("click", (e) => {
+      if (e.target === toggleSwitch || toggleSwitch.contains(e.target)) return;
+      toggleHumanizer();
+    });
+  }
+
   /* ─── Reset results ─── */
   function resetResults() {
     answerLoading.hidden = true;
@@ -609,6 +775,16 @@
     state.conversation = [];
     state.followCount = 0;
     followupBar.hidden = true;
+    // Reset humanizer state
+    humanizerAnswerHash = null;
+    humanizerOriginalAnswer = null;
+    const badge = document.getElementById("answer-humanized-badge");
+    if (badge) badge.hidden = true;
+    const toggleSwitch = document.getElementById("humanizer-switch");
+    if (toggleSwitch) {
+      toggleSwitch.setAttribute("aria-checked", "false");
+      toggleSwitch.closest(".humanizer-toggle").classList.remove("humanizer-on");
+    }
   }
 
   /* ─── Call the FastAPI backend ─── */
@@ -659,6 +835,20 @@
       relevance: s.relevance || 0.5,
     }));
 
+    // Cache original answer for humanizer
+    humanizerOriginalAnswer = answerHtml;
+    humanizerAnswerHash = simpleHash(answerHtml + Date.now());
+    humanizerCache[humanizerAnswerHash] = {
+      original: answerHtml,
+      humanized: null,
+      sources: data.sources || [],
+    };
+
+    // If humanizer is already ON from a previous session, humanize immediately
+    if (humanizerEnabled) {
+      humanizeAndSwap(answerHtml, data.sources || []);
+    }
+
     streamAnswer(answerHtml, () => {
       answerLoading.hidden = true;
       if (sources.length > 0) {
@@ -691,6 +881,19 @@
     const answerText = buildAnswer(query, demoSources);
 
     answerContent.hidden = false;
+
+    // Cache for humanizer
+    humanizerOriginalAnswer = answerText;
+    humanizerAnswerHash = simpleHash(answerText + Date.now());
+    humanizerCache[humanizerAnswerHash] = {
+      original: answerText,
+      humanized: null,
+      sources: demoSources,
+    };
+
+    if (humanizerEnabled) {
+      humanizeAndSwap(answerText, demoSources);
+    }
 
     streamAnswer(answerText, () => {
       answerLoading.hidden = true;
@@ -1724,6 +1927,9 @@
         document.documentElement.classList.add("theme-ready");
       });
     });
+
+    // ── Humanizer initialisation ──
+    initHumanizer();
 
     // ── i18n initialisation & language switcher ──
     initLangSwitcher();

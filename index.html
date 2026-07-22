@@ -303,11 +303,20 @@
           <div class="answer-content" id="answer-content" hidden>
             <div class="answer-header">
               <h2 class="answer-title" data-i18n="results.synthesis">Synthesis</h2>
-              <span class="answer-confidence" id="answer-confidence">
-                <span class="confidence-dot" aria-hidden="true"></span>
-                <span class="confidence-label" data-i18n="results.confidence">Confidence</span>
-                <span class="confidence-value" id="confidence-value">High</span>
-              </span>
+              <div class="answer-header-controls">
+                <span class="answer-confidence" id="answer-confidence">
+                  <span class="confidence-dot" aria-hidden="true"></span>
+                  <span class="confidence-label" data-i18n="results.confidence">Confidence</span>
+                  <span class="confidence-value" id="confidence-value">High</span>
+                </span>
+                <!-- Humanizer toggle -->
+                <label class="humanizer-toggle" id="humanizer-toggle" title="Rewrite in plain language" aria-label="Toggle plain language mode">
+                  <span class="humanizer-toggle-label" data-i18n="results.humanizerLabel">Plain language</span>
+                  <span class="humanizer-toggle-switch" role="switch" aria-checked="false" tabindex="0" id="humanizer-switch">
+                    <span class="humanizer-toggle-thumb"></span>
+                  </span>
+                </label>
+              </div>
             </div>
 
             <div class="answer-body" id="answer-body">
@@ -317,6 +326,7 @@
             <div class="answer-meta">
               <span class="answer-date">Generated <time id="answer-timestamp" datetime=""></time></span>
               <span class="answer-sources-count" id="answer-sources-count"></span>
+              <span class="answer-humanized-badge" id="answer-humanized-badge" hidden data-i18n="results.humanizedBadge">Plain language</span>
             </div>
           </div>
         </div>

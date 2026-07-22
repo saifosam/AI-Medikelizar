@@ -83,7 +83,9 @@
     "verifyingAdmin": "Verifying admin access…",
     "followupPlaceholder": "Ask a follow-up or start a new topic…",
     "submitFollowup": "Submit follow-up",
-    "searching": "Retrieving evidence and generating answer"
+    "searching": "Retrieving evidence and generating answer",
+    "humanizerLabel": "Plain language",
+    "humanizedBadge": "Plain language"
   },
   "sources": {
     "heading": "Trusted sources",
