@@ -262,8 +262,7 @@ async def query(request: Request, body: QueryRequest):
         if not check_query_limit(user, db):
             raise HTTPException(
                 status_code=429,
-                detail=f"Daily query limit reached ({limits['queries_per_day']}/day). "
-                       f"Upgrade your subscription for higher limits.",
+                detail=f"Daily query limit reached. Upgrade your subscription or purchase credit packs.",
             )
 
         # ── Diagnostic log: show incoming context for follow-up queries ──
@@ -289,14 +288,20 @@ async def query(request: Request, body: QueryRequest):
         db.add(query_log)
         db.commit()
 
-        # Include credit/usage info in the response so frontend can update indicators
-        from .subscriptions import get_user_daily_limit, get_queries_used_today
+        # Deduct from purchased credits if daily limit is exhausted
+        from .subscriptions import get_user_daily_limit, get_queries_used_today, get_purchased_credits, deduct_purchased_credit
         daily_limit = get_user_daily_limit(user, db)
         used = get_queries_used_today(user, db)
+        if used > daily_limit:
+            deduct_purchased_credit(user, db)
+        # Get final credit state
+        used = get_queries_used_today(user, db)
+        purchased = get_purchased_credits(user, db)
         credits = {
             "used": used,
             "limit": daily_limit,
             "remaining": max(0, daily_limit - used),
+            "purchased_credits": purchased,
         }
 
         # Add credits info to the response

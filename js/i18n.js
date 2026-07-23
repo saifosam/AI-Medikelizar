@@ -312,6 +312,8 @@
     currentDir = dir;
 
     applyDirection(initialLocale, dir);
+    // Translate the DOM now that translations are loaded
+    translateDOM();
   }
 
   /* ─── Get list of common languages for switcher ─── */

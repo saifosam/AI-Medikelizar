@@ -1251,8 +1251,8 @@
     {
       id: "premium",
       label: "Premium",
-      price_cents: 999,
-      queries_per_day: 50,
+      price_cents: 9000,
+      queries_per_day: 15,
       daily_limit: 15, daily_limit_min: 10, daily_limit_max: 25,
       features: [
         "10–25 queries per day (adjustable)",
@@ -1264,8 +1264,8 @@
     {
       id: "vip",
       label: "VIP",
-      price_cents: 2999,
-      queries_per_day: -1,
+      price_cents: 27000,
+      queries_per_day: 40,
       daily_limit: 40, daily_limit_min: 25, daily_limit_max: 60,
       features: [
         "25–60 queries per day (adjustable)",
@@ -1407,19 +1407,31 @@
     });
   }
 
-  /* ─── Language switcher ─── */
+  /* ─── Language switcher with search ─── */
   function initLangSwitcher() {
     const toggle = document.getElementById("lang-toggle");
+    const container = document.getElementById("lang-dropdown");
     const dropdown = document.getElementById("lang-dropdown-menu");
     const label = document.getElementById("lang-toggle-label");
-    if (!toggle || !dropdown) return;
+    const filterInput = document.getElementById("lang-filter-input");
+    if (!toggle || !dropdown || !filterInput) return;
 
-    function renderLangMenu() {
+    let allLanguageCodes = [];
+
+    function renderLangMenu(filterText) {
       const i18n = window.i18n;
       if (!i18n) return;
       const codes = (i18n.getCommonLanguages && i18n.getCommonLanguages()) || ["en", "ar"];
+      allLanguageCodes = codes;
       const current = getCurrentLang();
-      dropdown.innerHTML = codes.map(code => {
+      const query = (filterText || "").toLowerCase();
+      const filtered = query
+        ? codes.filter(code => {
+            const info = i18n.getLocaleInfo ? i18n.getLocaleInfo(code) : { label: code.toUpperCase(), nativeLabel: code.toUpperCase() };
+            return code.includes(query) || info.label.toLowerCase().includes(query) || info.nativeLabel.toLowerCase().includes(query);
+          })
+        : codes;
+      dropdown.innerHTML = filtered.map(code => {
         const info = i18n.getLocaleInfo ? i18n.getLocaleInfo(code) : { code, nativeLabel: code.toUpperCase(), label: code.toUpperCase() };
         return `
           <button class="lang-option${code === current ? ' lang-option-active' : ''}"
@@ -1433,19 +1445,45 @@
         const currentInfo = i18n.getLocaleInfo ? i18n.getLocaleInfo(current) : null;
         label.textContent = currentInfo ? currentInfo.nativeLabel : current.toUpperCase();
       }
-      // Update aria-label on the toggle button
       if (toggle) {
         const currentInfo = i18n.getLocaleInfo ? i18n.getLocaleInfo(current) : null;
         toggle.setAttribute("aria-label", currentInfo ? `Language: ${currentInfo.label}` : `Language: ${current.toUpperCase()}`);
       }
+      // Scroll current language into view within the dropdown container
+      if (!query) {
+        const active = dropdown.querySelector(".lang-option-active");
+        if (active) {
+          const itemTop = active.offsetTop;
+          const itemBottom = itemTop + active.offsetHeight;
+          const scrollTop = dropdown.scrollTop;
+          const containerHeight = dropdown.clientHeight;
+          if (itemTop < scrollTop) {
+            dropdown.scrollTop = Math.max(0, itemTop - 8);
+          } else if (itemBottom > scrollTop + containerHeight) {
+            dropdown.scrollTop = itemBottom - containerHeight + 8;
+          }
+        }
+      }
     }
 
-    renderLangMenu();
+    renderLangMenu("");
 
-    // Toggle dropdown on click
+    // Search filter input
+    filterInput.addEventListener("input", (e) => {
+      renderLangMenu(e.target.value);
+    });
+
+    // Toggle dropdown panel on click
     toggle.addEventListener("click", (e) => {
       e.stopPropagation();
-      dropdown.classList.toggle("lang-dropdown-open");
+      const opening = !container.classList.contains("lang-dropdown-open");
+      container.classList.toggle("lang-dropdown-open");
+      toggle.setAttribute("aria-expanded", String(opening));
+      if (opening) {
+        filterInput.value = "";
+        renderLangMenu("");
+        requestAnimationFrame(() => filterInput.focus());
+      }
     });
 
     // Select language
@@ -1455,16 +1493,16 @@
       const code = btn.getAttribute("data-lang");
       if (code && window.i18n) {
         await window.i18n.setLanguage(code);
-        renderLangMenu();
-        // Re-translate DOM
-        if (window.i18n.translateDOM) window.i18n.translateDOM();
+        renderLangMenu("");
       }
-      dropdown.classList.remove("lang-dropdown-open");
+      container.classList.remove("lang-dropdown-open");
+      toggle.setAttribute("aria-expanded", "false");
     });
 
     // Close dropdown on click outside
     document.addEventListener("click", () => {
-      dropdown.classList.remove("lang-dropdown-open");
+      container.classList.remove("lang-dropdown-open");
+      toggle.setAttribute("aria-expanded", "false");
     });
   }
 
@@ -1683,7 +1721,7 @@
   }
 
   /* ─── Credit / Quota tracking ─── */
-  let creditState = { used: 0, limit: 5, remaining: 5, tier: "basic" };
+  let creditState = { used: 0, limit: 5, remaining: 5, tier: "basic", purchased_credits: 0 };
 
   async function fetchCredits() {
     try {
@@ -1702,6 +1740,104 @@
     }
   }
 
+  /* ─── Buy credits (pay-as-you-go) ─── */
+  let creditPackCache = null;
+
+  async function openBuyCreditsModal() {
+    const modal = document.getElementById("buy-credits-modal");
+    if (!modal) return;
+    modal.style.display = "flex";
+    document.body.style.overflow = "hidden";
+
+    const container = document.getElementById("credit-packs");
+    if (!container) return;
+
+    // Load packs from API or use cache
+    if (!creditPackCache) {
+      try {
+        const resp = await fetch(`${API_BASE}/api/subscriptions/credit-packs`);
+        if (resp.ok) {
+          creditPackCache = await resp.json();
+        }
+      } catch (e) {
+        // Use fallback
+        creditPackCache = { packs: [
+          { id: "small", queries: 10,  price_cents: 200,  price_egp: "2.00" },
+          { id: "medium", queries: 25, price_cents: 450,  price_egp: "4.50" },
+          { id: "large", queries: 50, price_cents: 900,  price_egp: "9.00" },
+        ]};
+      }
+    }
+
+    const packs = creditPackCache?.packs || [];
+    container.innerHTML = packs.map(pack => `
+      <button class="credit-pack-card" data-pack="${pack.id}">
+        <div class="credit-pack-info">
+          <span class="credit-pack-queries">${pack.queries} <span class="credit-pack-unit">queries</span></span>
+        </div>
+        <div class="credit-pack-price">${pack.price_egp} <span class="credit-pack-currency">EGP</span></div>
+      </button>
+    `).join("");
+
+    // Handle pack selection
+    container.querySelectorAll(".credit-pack-card").forEach(card => {
+      card.addEventListener("click", async () => {
+        const packId = card.getAttribute("data-pack");
+        card.classList.add("credit-pack-selected");
+        card.disabled = true;
+        card.innerHTML = '<div class="credit-pack-loading">Redirecting to payment…</div>';
+        await purchaseCreditPack(packId);
+      });
+    });
+  }
+
+  function closeBuyCreditsModal() {
+    const modal = document.getElementById("buy-credits-modal");
+    if (modal) modal.style.display = "none";
+    document.body.style.overflow = "";
+  }
+
+  async function purchaseCreditPack(packId) {
+    try {
+      const headers = await getAuthHeaders();
+      const resp = await fetch(`${API_BASE}/api/subscriptions/buy-credits`, {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ pack: packId }),
+        credentials: "include",
+        signal: AbortSignal.timeout(15000),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.url) {
+          window.location.href = data.url;
+        }
+      } else {
+        const err = await resp.json();
+        alert(err.detail || "Failed to create checkout");
+        closeBuyCreditsModal();
+      }
+    } catch (e) {
+      alert("Could not connect to payment server. Please try again.");
+      closeBuyCreditsModal();
+    }
+  }
+
+  // Wire up buy-credits button and modal
+  function initBuyCredits() {
+    const buyBtn = document.getElementById("buy-credits-btn");
+    const closeBtn = document.getElementById("buy-credits-close");
+    const cancelBtn = document.getElementById("buy-credits-cancel");
+    if (buyBtn) buyBtn.addEventListener("click", openBuyCreditsModal);
+    if (closeBtn) closeBtn.addEventListener("click", closeBuyCreditsModal);
+    if (cancelBtn) cancelBtn.addEventListener("click", closeBuyCreditsModal);
+    // Close on overlay click
+    const modal = document.getElementById("buy-credits-modal");
+    if (modal) modal.addEventListener("click", (e) => {
+      if (e.target === modal) closeBuyCreditsModal();
+    });
+  }
+
   function updateCreditIndicators() {
     const { used, limit, remaining, tier } = creditState;
     const nav = document.getElementById("credit-indicator");
@@ -1713,6 +1849,8 @@
     if (!window.Clerk || !Clerk.isSignedIn) {
       nav.style.display = "none";
       badge.style.display = "none";
+      const profileBadge = document.getElementById("profile-credit-badge");
+      if (profileBadge) profileBadge.style.display = "none";
       if (limitMsg) limitMsg.style.display = "none";
       return;
     }
@@ -1752,6 +1890,30 @@
       badge.className = "credit-badge credit-low";
     }
     badgeText.textContent = `${remaining} remaining`;
+
+    const purchasedCredits = creditState.purchased_credits || 0;
+
+    // Show buy-credits button when signed in
+    const buyBtn = document.getElementById("buy-credits-btn");
+    if (buyBtn) buyBtn.style.display = "flex";
+
+    // Profile credit badge (beside user button)
+    const profileBadge = document.getElementById("profile-credit-badge");
+    const profileText = document.getElementById("profile-credit-text");
+    if (profileBadge && profileText) {
+      profileBadge.style.display = "flex";
+      profileBadge.className = "profile-credit-badge";
+      let displayText = remaining.toString();
+      if (purchasedCredits > 0) {
+        displayText = `${remaining}+${purchasedCredits}`;
+        profileBadge.classList.add("profile-credit-has-purchased");
+      } else if (remaining <= 0) {
+        profileBadge.className = "profile-credit-badge profile-credit-empty";
+      } else if (remaining <= Math.ceil(limit * 0.25)) {
+        profileBadge.className = "profile-credit-badge profile-credit-low";
+      }
+      profileText.textContent = displayText;
+    }
 
     // Limit reached message
     if (limitMsg) {
@@ -1927,7 +2089,7 @@
   };
 
   /* ─── Init ─── */
-  function init() {
+  async function init() {
     // Set footer year
     const footerYear = document.getElementById("footer-year");
     if (footerYear) footerYear.textContent = new Date().getFullYear();
@@ -1965,10 +2127,14 @@
 
     // ── i18n initialisation & language switcher ──
     initLangSwitcher();
-    // Translate static DOM elements (data-i18n attributes)
-    if (window.i18n && window.i18n.translateDOM) {
-      window.i18n.translateDOM();
+    // Initialise i18n — loads translations, translates DOM, applies direction
+    // Await so translations are loaded before route() runs (avoids flash of raw keys)
+    if (window.i18n && window.i18n.init) {
+      await window.i18n.init();
     }
+
+    // ── Buy credits modal initialisation ──
+    initBuyCredits();
 
     // ── Currency system initialisation ──
     if (window.AICurrency && window.AICurrency.init) {

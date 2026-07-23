@@ -540,6 +540,26 @@ PAYMOB_VIP_PRICE_CENTS=8999               # VIP tier price in EGP piastres (89.9
 2. Set the **Webhook URL** to: `https://your-domain.com/api/subscriptions/webhook`
 3. In `.env`, set `PAYMOB_WEBHOOK_SECRET` to the HMAC secret from Paymob
 
+### Credit packs (pay-as-you-go)
+
+In addition to subscriptions, any user can purchase **one-time credit packs** — queries that never expire and are only used after your daily subscription limit is exhausted.
+
+| Pack | Queries | Price (EGP) | Price per query |
+|------|---------|-------------|-----------------|
+| **Small** | 10 | 2.00 EGP | ~0.20 EGP/query |
+| **Medium** | 25 | 4.50 EGP | ~0.18 EGP/query |
+| **Large** | 50 | 9.00 EGP | ~0.18 EGP/query |
+
+**How it works:**
+1. Click the **"+" button** next to the credit counter in the nav bar
+2. Choose a credit pack (10, 25, or 50 queries)
+3. Pay via Paymob (card or mobile wallet)
+4. Credits are credited immediately upon successful payment
+5. Credits are consumed **after** your daily subscription limit — they never replace your free daily quota
+6. Purchased credits **never expire** — they persist until used
+
+**No additional configuration required.** The same Paymob environment variables used for subscriptions also power credit purchases. Just ensure `PAYMOB_API_KEY`, `PAYMOB_PUBLIC_KEY`, `PAYMOB_INTEGRATION_ID_CARDS`, and `PAYMOB_INTEGRATION_ID_WALLETS` are set (see Step 3 above).
+
 ### Subscription tiers
 
 | Tier | Price | Queries/day | Features |

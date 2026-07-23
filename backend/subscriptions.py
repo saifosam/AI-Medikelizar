@@ -39,7 +39,7 @@ from sqlalchemy.orm import Session
 from . import config
 from .auth import require_user, get_current_user
 from .database import get_db
-from .models import UserModel, SubscriptionModel, QueryLogModel
+from .models import UserModel, SubscriptionModel, QueryLogModel, CreditPurchaseModel
 
 log = logging.getLogger("ai-medikelizar.subscriptions")
 
@@ -51,6 +51,24 @@ COST_PER_QUERY_EGP = 0.15        # Base cost per query in EGP
 DAYS_PER_MONTH = 30
 PREMIUM_MARGIN = 1.33             # Premium margin multiplier
 VIP_MARGIN = 1.50                 # VIP margin multiplier
+
+# ── Credit pack definitions (pay-as-you-go) ──────────
+CREDIT_PACKS = {
+    "small": {"queries": 10,  "margin": 1.33},   # ~0.20 EGP/query
+    "medium": {"queries": 25, "margin": 1.25},   # ~0.19 EGP/query
+    "large": {"queries": 50, "margin": 1.20},     # ~0.18 EGP/query
+}
+
+
+def calculate_credit_pack_price(queries: int, margin: float) -> int:
+    """
+    Calculate price in EGP cents for a credit pack.
+    Formula: queries × 0.15 EGP × margin, rounded to nearest 0.50 EGP.
+    """
+    raw_egp = queries * COST_PER_QUERY_EGP * margin
+    # Round to nearest 0.50 EGP (50 cents) for small amounts
+    rounded_egp = round(raw_egp * 2) / 2
+    return int(round(rounded_egp * 100))
 
 # ── Tier ranges (min/max daily limit) ────────────────
 TIER_RANGES = {
@@ -345,14 +363,21 @@ def get_queries_used_today(user: UserModel, db: Session) -> int:
 
 def check_query_limit(user: Optional[UserModel], db: Session) -> bool:
     """
-    Check if the user can make a query based on their daily limit.
-    Returns True if allowed, False if over the limit.
+    Check if the user can make a query.
+    First checks daily subscription limit, then falls back to purchased credits.
+    Returns True if allowed, False if over all limits.
     """
     if not user:
         return True  # Allow anonymous
     daily_limit = get_user_daily_limit(user, db)
     used = get_queries_used_today(user, db)
-    return used < daily_limit
+    if used < daily_limit:
+        return True  # Within daily limit
+    # Daily limit exhausted — check purchased credits
+    purchased = get_purchased_credits(user, db)
+    if purchased > 0:
+        return True  # Has purchased credits to fall back to
+    return False  # No remaining credits at all
 
 
 def get_user_payment_type(user: UserModel, db: Session) -> str:
@@ -385,6 +410,7 @@ async def get_pricing():
             "daily_limit": daily_limit,
             "daily_limit_min": tier_info["daily_limit_min"],
             "daily_limit_max": tier_info["daily_limit_max"],
+            "queries_per_day": daily_limit,
             "features": tier_info["features"],
         })
     return {"tiers": tiers, "currency": "EGP"}
@@ -443,6 +469,37 @@ async def get_subscription_status(
     }
 
 
+def get_purchased_credits(user: UserModel, db: Session) -> int:
+    """Get the total remaining purchased credits for a user."""
+    total = db.query(
+        db.func.coalesce(db.func.sum(CreditPurchaseModel.credits_remaining), 0)
+    ).filter(
+        CreditPurchaseModel.user_id == user.id,
+        CreditPurchaseModel.status == "active",
+    ).scalar()
+    return total or 0
+
+
+def deduct_purchased_credit(user: UserModel, db: Session) -> bool:
+    """
+    Deduct one credit from the user's purchased balance (oldest purchase first).
+    Returns True if a credit was deducted, False if no credits available.
+    """
+    purchase = db.query(CreditPurchaseModel).filter(
+        CreditPurchaseModel.user_id == user.id,
+        CreditPurchaseModel.status == "active",
+        CreditPurchaseModel.credits_remaining > 0,
+    ).order_by(CreditPurchaseModel.created_at.asc()).first()
+    if not purchase:
+        return False
+    purchase.credits_remaining -= 1
+    if purchase.credits_remaining <= 0:
+        purchase.status = "consumed"
+    purchase.updated_at = datetime.utcnow()
+    db.commit()
+    return True
+
+
 @router.get("/credits")
 async def get_credits(
     user: Optional[UserModel] = Depends(get_current_user),
@@ -453,17 +510,85 @@ async def get_credits(
     Called frequently (after each query) — keep it fast.
     """
     if not user:
-        return {"used": 0, "limit": 5, "remaining": 5, "tier": "basic"}
+        return {"used": 0, "limit": 5, "remaining": 5, "tier": "basic", "purchased_credits": 0}
     tier = get_user_tier(user, db)
     daily_limit = get_user_daily_limit(user, db)
     used = get_queries_used_today(user, db)
     remaining = max(0, daily_limit - used)
+    purchased = get_purchased_credits(user, db)
     return {
         "used": used,
         "limit": daily_limit,
         "remaining": remaining,
         "tier": tier,
+        "purchased_credits": purchased,
     }
+
+
+@router.get("/credit-packs")
+async def get_credit_packs():
+    """Return available credit pack options with prices."""
+    packs = []
+    for pack_id, info in CREDIT_PACKS.items():
+        price_cents = calculate_credit_pack_price(info["queries"], info["margin"])
+        packs.append({
+            "id": pack_id,
+            "queries": info["queries"],
+            "price_cents": price_cents,
+            "price_egp": f"{(price_cents / 100):.2f}",
+        })
+    return {"packs": packs, "currency": "EGP"}
+
+
+@router.post("/buy-credits")
+async def buy_credits(
+    request: Request,
+    user: UserModel = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Create a Paymob Payment Intention for purchasing a credit pack.
+
+    Expects JSON body: { "pack": "small" | "medium" | "large" }
+    """
+    body = await request.json()
+    pack_id = body.get("pack", "")
+
+    if pack_id not in CREDIT_PACKS:
+        raise HTTPException(status_code=400, detail="Invalid credit pack. Choose 'small', 'medium', or 'large'.")
+
+    pack_info = CREDIT_PACKS[pack_id]
+    amount_cents = calculate_credit_pack_price(pack_info["queries"], pack_info["margin"])
+
+    if amount_cents <= 0:
+        raise HTTPException(status_code=400, detail="Invalid pack price.")
+
+    base_url = str(request.base_url).rstrip("/")
+
+    # Create Paymob payment intention
+    result = create_payment_intention(
+        amount_cents=amount_cents,
+        currency="EGP",
+        user=user,
+        tier="basic",  # Credits are per-user, not tier-specific
+        base_url=base_url,
+    )
+
+    # Save the intention ID to a pending credit purchase record
+    purchase = CreditPurchaseModel(
+        user_id=user.id,
+        pack_size=pack_info["queries"],
+        amount_cents=amount_cents,
+        credits_remaining=pack_info["queries"],
+        paymob_intention_id=str(result["id"]),
+        status="pending",
+    )
+    db.add(purchase)
+    db.commit()
+
+    log.info(f"Credit purchase checkout for user {user.email}: {pack_id} ({pack_info['queries']} queries, {amount_cents} EGP cents)")
+
+    return {"url": result["checkout_url"]}
 
 
 @router.post("/update-limit")
@@ -630,7 +755,7 @@ def _get_or_create_subscription(user_id: int, db: Session) -> SubscriptionModel:
 
 
 def _handle_transaction_processed(obj: dict, db: Session):
-    """Handle successful payment — activate subscription."""
+    """Handle successful payment — activate subscription or credit purchase."""
     success = obj.get("success", False)
     if not success:
         return
@@ -654,6 +779,32 @@ def _handle_transaction_processed(obj: dict, db: Session):
         return
 
     # Extract payment details
+    card_token = obj.get("card_token", "") or obj.get("saved_card_token", "")
+    card_num = obj.get("card_num", "")
+    payment_method = "card" if card_num else "wallet"
+    order_id = str(obj.get("order", {}).get("id", "")) if isinstance(obj.get("order"), dict) else ""
+
+    # Check if this is a credit purchase (tier="basic" with pending credit purchase)
+    if tier == "basic" and intention_id:
+        # Find pending credit purchase with this intention ID
+        purchase = db.query(CreditPurchaseModel).filter(
+            CreditPurchaseModel.paymob_intention_id == intention_id,
+            CreditPurchaseModel.status == "pending",
+        ).first()
+        if purchase:
+            purchase.status = "active"
+            purchase.paymob_order_id = order_id or purchase.paymob_order_id
+            purchase.updated_at = datetime.utcnow()
+            db.commit()
+            log.info(
+                f"Credit purchase activated for {user.email}: "
+                f"{purchase.pack_size} credits ({purchase.amount_cents} EGP cents)"
+            )
+            return
+        # If no pending purchase found with this intention, fall through
+        # to normal subscription handling
+
+    # Normal subscription flow
     card_token = obj.get("card_token", "") or obj.get("saved_card_token", "")
     card_num = obj.get("card_num", "")
     payment_method = "card" if card_num else "wallet"

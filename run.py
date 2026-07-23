@@ -31,8 +31,8 @@ if __name__ == "__main__":
     print("  +------------------------------------------------+")
     print("  |        AI-Medikelizar -- Starting Up           |")
     print("  +------------------------------------------------+")
-    print(f"  |  Open:  http://localhost:{port}                   |")
-    print(f"  |  Press Ctrl+C to stop                        |")
+    print(f"  |  Open:  http://localhost:{port}                  |")
+    print(f"  |  Press Ctrl+C to stop                          |")
     print("  +------------------------------------------------+")
     print()
 

@@ -73,6 +73,22 @@ class QueryLogModel(SA_Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class CreditPurchaseModel(SA_Base):
+    """Record of a purchased credit pack."""
+    __tablename__ = "credit_purchases"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    pack_size = Column(Integer, nullable=False)       # e.g. 10, 25, 50
+    amount_cents = Column(Integer, nullable=False)    # Price paid in EGP cents
+    credits_remaining = Column(Integer, nullable=False)  # Credits still available
+    paymob_intention_id = Column(String(255), default="")
+    paymob_order_id = Column(String(255), default="")
+    status = Column(String(50), default="active")    # active | consumed | refunded
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class PageViewModel(SA_Base):
     """Simple page view tracking for analytics."""
     __tablename__ = "page_views"

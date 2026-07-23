@@ -38,5 +38,5 @@ def get_db():
 
 def init_db():
     """Create all tables. Call on app startup."""
-    from .models import UserModel, SubscriptionModel, QueryLogModel, PageViewModel, SA_Base  # noqa
+    from .models import UserModel, SubscriptionModel, QueryLogModel, PageViewModel, CreditPurchaseModel, SA_Base  # noqa
     SA_Base.metadata.create_all(bind=engine)

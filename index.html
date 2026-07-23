@@ -79,6 +79,16 @@
         <!-- Clerk user button (shown when signed in) -->
         <div id="user-button" class="header-user-button"></div>
 
+        <!-- Profile credit badge (beside profile pic) -->
+        <div class="profile-credit-badge" id="profile-credit-badge" style="display:none;" title="Available queries today">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+            <path d="M12 9v4"></path>
+            <path d="M12 17h.01"></path>
+          </svg>
+          <span class="profile-credit-text" id="profile-credit-text">5</span>
+        </div>
+
         <!-- Credit indicator (nav) -->
         <div class="credit-indicator" id="credit-indicator" style="display:none;" title="Queries used today">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -89,9 +99,34 @@
           <span class="credit-indicator-text" id="credit-indicator-text">5/5</span>
         </div>
 
-        <!-- Language switcher dropdown -->
+        <!-- Buy credits button -->
+        <button class="buy-credits-btn" id="buy-credits-btn" style="display:none;" title="Buy more queries" aria-label="Buy query credits">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </button>
+
+        <!-- Language switcher: toggle button + dropdown panel -->
         <div class="lang-dropdown" id="lang-dropdown">
-          <div class="lang-dropdown-menu" id="lang-dropdown-menu" role="listbox" aria-label="Select language">
+          <button class="lang-toggle" id="lang-toggle" aria-label="Switch language" title="Switch language" aria-haspopup="listbox" aria-expanded="false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="2" y1="12" x2="22" y2="12"></line>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+            </svg>
+            <span class="lang-toggle-label" id="lang-toggle-label">EN</span>
+          </button>
+          <div class="lang-dropdown-panel" id="lang-dropdown-panel">
+            <div class="lang-dropdown-search">
+              <svg class="lang-dropdown-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="search" id="lang-filter-input" class="lang-filter-input" placeholder="Search languages…" autocomplete="off" aria-label="Filter languages">
+            </div>
+            <div class="lang-dropdown-menu" id="lang-dropdown-menu" role="listbox" aria-label="Select language">
+            </div>
           </div>
         </div>
 
@@ -102,16 +137,6 @@
             <path d="M9 12l2 2 4-4"></path>
           </svg>
         </a>
-
-        <!-- Language switcher -->
-        <button class="lang-toggle" id="lang-toggle" aria-label="Switch language" title="Switch language">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="2" y1="12" x2="22" y2="12"></line>
-            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-          </svg>
-          <span class="lang-toggle-label" id="lang-toggle-label">EN</span>
-        </button>
 
         <button class="theme-toggle" id="theme-toggle" aria-label="Switch to dark mode" title="Switch to dark mode">
           <!-- Moon icon (light mode → click to go dark) -->
@@ -754,6 +779,33 @@
     </section>
 
   </main>
+
+  <!-- ════════════════ BUY CREDITS MODAL ════════════════ -->
+  <div class="modal-overlay" id="buy-credits-modal" style="display:none;" role="dialog" aria-modal="true" aria-label="Buy query credits">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h2 class="modal-heading">Buy query credits</h2>
+        <button class="modal-close-btn" id="buy-credits-close" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <p class="modal-subtitle">Purchase one-time query credits that never expire. Credits are used after your daily subscription limit is reached.</p>
+      <div class="credit-packs" id="credit-packs">
+        <!-- Dynamically populated -->
+        <div class="credit-pack-card">
+          <div class="credit-pack-info">
+            <span class="credit-pack-queries">Loading…</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="buy-credits-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ════════════════ FOOTER ════════════════ -->
   <footer class="site-footer">

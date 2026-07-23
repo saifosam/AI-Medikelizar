@@ -42,6 +42,14 @@
 
   /* ─── Currency formatting rules ─── */
   const CURRENCY_FORMAT = {
+    // Major currencies
+    USD: { decimals: 2, symbol: "$", placement: "before" },
+    EUR: { decimals: 2, symbol: "\u20ac", placement: "before" },  // €
+    GBP: { decimals: 2, symbol: "\u00a3", placement: "before" },  // £
+    CAD: { decimals: 2, symbol: "CA$", placement: "before" },
+    AUD: { decimals: 2, symbol: "AU$", placement: "before" },
+    CHF: { decimals: 2, symbol: "CHF ", placement: "before" },
+    CNY: { decimals: 2, symbol: "\u00a5", placement: "before" },  // ¥
     JPY: { decimals: 0, symbol: "\u00a5", placement: "before" },  // ¥
     KRW: { decimals: 0, symbol: "\u20a9", placement: "before" },  // ₩
     VND: { decimals: 0, symbol: "\u20ab", placement: "after" },   // ₫
@@ -59,6 +67,26 @@
     KWD: { decimals: 3, symbol: "\u062f.\u0643", placement: "before" },
     OMR: { decimals: 3, symbol: "\u0631.\u0639.", placement: "before" },
     BHD: { decimals: 3, symbol: "\u062f.\u0628", placement: "before" },
+    SAR: { decimals: 2, symbol: "\u0631.\u0633", placement: "before" },  // ر.س
+    AED: { decimals: 2, symbol: "\u062f.\u0625", placement: "before" },  // د.إ
+    QAR: { decimals: 2, symbol: "\u0631.\u0642", placement: "before" },  // ر.ق
+    TRY: { decimals: 2, symbol: "\u20a4", placement: "before" },  // ₺
+    RUB: { decimals: 2, symbol: "\u20bd", placement: "before" },  // ₽
+    BRL: { decimals: 2, symbol: "R$", placement: "before" },
+    INR: { decimals: 2, symbol: "\u20b9", placement: "before" },  // ₹
+    SEK: { decimals: 2, symbol: "kr", placement: "after" },
+    NOK: { decimals: 2, symbol: "kr", placement: "after" },
+    DKK: { decimals: 2, symbol: "kr", placement: "after" },
+    PLN: { decimals: 2, symbol: "z\u0142", placement: "after" },  // zł
+    ZAR: { decimals: 2, symbol: "R", placement: "before" },
+    MAD: { decimals: 2, symbol: "\u062f.\u0645.", placement: "before" },  // د.م.
+    EGP: { decimals: 2, symbol: "EGP ", placement: "before" },
+    NZD: { decimals: 2, symbol: "NZ$", placement: "before" },
+    SGD: { decimals: 2, symbol: "S$", placement: "before" },
+    HKD: { decimals: 2, symbol: "HK$", placement: "before" },
+    MYR: { decimals: 2, symbol: "RM", placement: "before" },
+    THB: { decimals: 2, symbol: "\u0e3f", placement: "before" },  // ฿
+    PHP: { decimals: 2, symbol: "\u20b1", placement: "before" },  // ₱
     // Default: 2 decimal places
   };
 
